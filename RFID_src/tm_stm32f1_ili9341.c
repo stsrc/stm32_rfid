@@ -16,7 +16,7 @@
  * | along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * |----------------------------------------------------------------------
  */
-#include "tm_stm32f4_ili9341.h"
+#include "tm_stm32f1_ili9341.h"
 
 /**
  * @brief  Orientation
@@ -108,7 +108,7 @@ void TM_ILI9341_Init() {
 	TM_SPI_Init(ILI9341_SPI, ILI9341_SPI_PINS);
 	
 	/* Init DMA for SPI */
-	TM_SPI_DMA_Init(ILI9341_SPI);
+	//TM_SPI_DMA_Init(ILI9341_SPI);
 	
 	/* Init LCD */
 	TM_ILI9341_InitLCD();	
@@ -120,7 +120,7 @@ void TM_ILI9341_Init() {
 	ILI9341_Opts.orientation = TM_ILI9341_Portrait;
 	
 	/* Fill with white color */
-	TM_ILI9341_Fill(ILI9341_COLOR_WHITE);
+	TM_ILI9341_Fill(ILI9341_COLOR_BLUE);
 }
 
 void TM_ILI9341_InitLCD(void) {

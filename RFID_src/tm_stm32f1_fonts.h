@@ -73,7 +73,8 @@ extern C {
  - string.h
 @endverbatim
  */
-#include "stm32f4xx.h"
+
+#include <stm32f1xx.h>
 #include "defines.h"
 #include "string.h"
 

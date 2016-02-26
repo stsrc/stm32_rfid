@@ -16,7 +16,8 @@
  * | along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * |----------------------------------------------------------------------
  */
-#include "tm_stm32f4_fonts.h"
+
+#include "tm_stm32f1_fonts.h"
 
 const uint16_t TM_Font7x10 [] = {
 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,  // sp

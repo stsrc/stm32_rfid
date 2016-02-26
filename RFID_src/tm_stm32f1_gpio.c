@@ -16,7 +16,7 @@
  * | along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * |----------------------------------------------------------------------
  */
-#include "tm_stm32f4_gpio.h"
+#include "tm_stm32f1_gpio.h"
 
 /* Private function */
 static uint16_t GPIO_UsedPins[11] = {0,0,0,0,0,0,0,0,0,0,0};

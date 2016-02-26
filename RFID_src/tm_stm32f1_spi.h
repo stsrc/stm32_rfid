@@ -144,13 +144,13 @@ SPI6    |PG14   PG12    PG13    |
 @endverbatim
  */
 
-#include "stm32f4xx.h"
-#include "stm32f4xx_rcc.h"
-#include "stm32f4xx_gpio.h"
-#include "stm32f4xx_spi.h"
+#include <stm32f1xx.h>
+#include <stm32f10x_rcc.h>
+#include <stm32f10x_gpio.h>
+#include <stm32f10x_spi.h>
 #include "defines.h"
 #include "attributes.h"
-#include "tm_stm32f4_gpio.h"
+#include "tm_stm32f1_gpio.h"
 
 /**
  * @defgroup TM_SPI_Typedefs
@@ -201,22 +201,6 @@ typedef enum {
  */
 #define USE_SPI1
 #define USE_SPI2
-#define USE_SPI3
-#ifdef SPI4
-#define USE_SPI4
-#else
-#warning "SPI4 undefined. Please update library with STD drivers from ST.com"
-#endif
-#ifdef SPI5
-#define USE_SPI5
-#else
-#warning "SPI5 undefined. Please update library with STD drivers from ST.com"
-#endif
-#ifdef SPI6
-#define USE_SPI6
-#else
-#warning "SPI6 undefined. Please update library with STD drivers from ST.com"
-#endif
 
 //----- SPI1 options start -------
 //Options can be overwriten in defines.h file
@@ -263,98 +247,6 @@ typedef enum {
 #define TM_SPI2_MODE		TM_SPI_Mode_0
 #endif
 //----- SPI2 options end -------
-
-//----- SPI3 options start -------
-//Options can be overwriten in defines.h file
-#ifndef TM_SPI3_PRESCALER
-#define TM_SPI3_PRESCALER	SPI_BaudRatePrescaler_32
-#endif
-//Specify datasize
-#ifndef TM_SPI3_DATASIZE
-#define TM_SPI3_DATASIZE 	SPI_DataSize_8b
-#endif
-//Specify which bit is first
-#ifndef TM_SPI3_FIRSTBIT
-#define TM_SPI3_FIRSTBIT 	SPI_FirstBit_MSB
-#endif
-//Mode, master or slave
-#ifndef TM_SPI3_MASTERSLAVE
-#define TM_SPI3_MASTERSLAVE SPI_Mode_Master
-#endif
-//Specify mode of operation, clock polarity and clock phase
-#ifndef TM_SPI3_MODE
-#define TM_SPI3_MODE		TM_SPI_Mode_0
-#endif
-//----- SPI3 options end -------
-
-//----- SPI4 options start -------
-//Options can be overwriten in defines.h file
-#ifndef TM_SPI4_PRESCALER
-#define TM_SPI4_PRESCALER	SPI_BaudRatePrescaler_32
-#endif
-//Specify datasize
-#ifndef TM_SPI4_DATASIZE
-#define TM_SPI4_DATASIZE 	SPI_DataSize_8b
-#endif
-//Specify which bit is first
-#ifndef TM_SPI4_FIRSTBIT
-#define TM_SPI4_FIRSTBIT 	SPI_FirstBit_MSB
-#endif
-//Mode, master or slave
-#ifndef TM_SPI4_MASTERSLAVE
-#define TM_SPI4_MASTERSLAVE	SPI_Mode_Master
-#endif
-//Specify mode of operation, clock polarity and clock phase
-#ifndef TM_SPI4_MODE
-#define TM_SPI4_MODE		TM_SPI_Mode_0
-#endif
-//----- SPI4 options end -------
-
-//----- SPI5 options start -------
-//Options can be overwriten in defines.h file
-#ifndef TM_SPI5_PRESCALER
-#define TM_SPI5_PRESCALER	SPI_BaudRatePrescaler_32
-#endif
-//Specify datasize
-#ifndef TM_SPI5_DATASIZE
-#define TM_SPI5_DATASIZE 	SPI_DataSize_8b
-#endif
-//Specify which bit is first
-#ifndef TM_SPI5_FIRSTBIT
-#define TM_SPI5_FIRSTBIT 	SPI_FirstBit_MSB
-#endif
-//Mode, master or slave
-#ifndef TM_SPI5_MASTERSLAVE
-#define TM_SPI5_MASTERSLAVE SPI_Mode_Master
-#endif
-//Specify mode of operation, clock polarity and clock phase
-#ifndef TM_SPI5_MODE
-#define TM_SPI5_MODE		TM_SPI_Mode_0
-#endif
-//----- SPI5 options end -------
-
-//----- SPI6 options start -------
-//Options can be overwriten in defines.h file
-#ifndef TM_SPI6_PRESCALER
-#define TM_SPI6_PRESCALER	SPI_BaudRatePrescaler_32
-#endif
-//Specify datasize
-#ifndef TM_SPI6_DATASIZE
-#define TM_SPI6_DATASIZE 	SPI_DataSize_8b
-#endif
-//Specify which bit is first
-#ifndef TM_SPI6_FIRSTBIT
-#define TM_SPI6_FIRSTBIT 	SPI_FirstBit_MSB
-#endif
-//Mode, master or slave
-#ifndef TM_SPI6_MASTERSLAVE
-#define TM_SPI6_MASTERSLAVE SPI_Mode_Master
-#endif
-//Specify mode of operation, clock polarity and clock phase
-#ifndef TM_SPI6_MODE
-#define TM_SPI6_MODE		TM_SPI_Mode_0
-#endif
-//----- SPI6 options end -------
 
 /**
  * @brief  Check SPI busy status

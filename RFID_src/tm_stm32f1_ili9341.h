@@ -128,11 +128,11 @@ VCC          3.3V         Positive power supply
 #include <stm32f10x_rcc.h>
 #include <stm32f10x_gpio.h>
 #include "defines.h"
-#include "tm_stm32f4_fonts.h"
-#include "tm_stm32f4_gpio.h"
-#include "tm_stm32f4_spi.h"
-#include "tm_stm32f4_dma.h"
-#include "tm_stm32f4_spi_dma.h"
+#include "tm_stm32f1_fonts.h"
+#include "tm_stm32f1_gpio.h"
+#include "tm_stm32f1_spi.h"
+//#include "tm_stm32f1_dma.h"
+//#include "tm_stm32f1_spi_dma.h"
 
 /**
  * @defgroup TM_ILI9341_Macros

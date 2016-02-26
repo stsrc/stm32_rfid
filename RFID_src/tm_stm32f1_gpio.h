@@ -90,8 +90,8 @@ extern C {
 @endverbatim
  */
 
-#include "stm32f4xx.h"
-#include "stm32f4xx_gpio.h"
+#include <stm32f1xx.h>
+#include <stm32f10x_gpio.h>
 #include "defines.h"
 
 /**

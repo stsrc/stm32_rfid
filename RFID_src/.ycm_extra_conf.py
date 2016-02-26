@@ -37,9 +37,9 @@ import ycm_core
 flags = [
 '-Wall',
 '-std=gnu99',
-'-I./'
-'-I/home/konrad/Programming/eb/STM32/toolchain/firmware/CORE/inc',
-'-I/home/konrad/Programming/eb/STM32/toolchain/firmware/StdPeriph_Driver/inc',
+'-I', './',
+'-isystem', '/home/konrad/Programming/eb/STM32/toolchain/firmware/CORE/inc/',
+'-isystem', '/home/konrad/Programming/eb/STM32/toolchain/firmware/StdPeriph_Driver/inc/',
 'c'
 ]
 
