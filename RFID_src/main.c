@@ -1,6 +1,5 @@
 #include <stm32f1xx.h>
 #include <stdlib.h>
-#include "tm_stm32f1_ili9341.h"
 
 int main(void)
 {

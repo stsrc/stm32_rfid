@@ -40,6 +40,7 @@ flags = [
 '-I', './',
 '-isystem', '/home/konrad/Programming/eb/STM32/toolchain/firmware/CORE/inc/',
 '-isystem', '/home/konrad/Programming/eb/STM32/toolchain/firmware/StdPeriph_Driver/inc/',
+'-isystem', '/home/konrad/Programming/eb/STM32/toolchain/firmware/STM32Cube_FW_F1_V1.3.0/Drivers/STM32F1xx_HAL_Driver/Inc',
 'c'
 ]
 
