@@ -21,12 +21,14 @@ AS=$(TOOLROOT)/arm-none-eabi-as
 
 CORE=$(LIBROOT)/CORE
 STDPERIPH=$(LIBROOT)/StdPeriph_Driver
+HAL=$(LIBROOT)/STM32Cube_FW_F1_V1.3.0/Drivers/STM32F1xx_HAL_Driver
 
 # Search path for core files
 
 vpath %.c $(CORE)/src
 vpath %.s $(CORE)/src
 vpath %.c $(STDPERIPH)/src
+vpath %.c $(HAL)/Src
 
 #  Processor specific
 #
@@ -42,7 +44,7 @@ LDFLAGS+= -Wall -Wl,-gc-sections,-u,main
 CFLAGS+= -mcpu=cortex-m3 -mthumb -mfloat-abi=soft
 CFLAGS+= -Os -g3 -Wall -std=gnu99 
 CFLAGS+= -fdata-sections
-CFLAGS+= -I$(CORE)/inc -I$(STDPERIPH)/inc -I.
+CFLAGS+= -I$(CORE)/inc -I$(STDPERIPH)/inc -I$(HAL)/Inc -I.
 CFLAGS+= -D$(PTYPE) -D$(MTYPE) 
 # Build executable
 
