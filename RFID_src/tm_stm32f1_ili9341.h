@@ -125,28 +125,16 @@ VCC          3.3V         Positive power supply
 
 
 #include <stm32f1xx.h>
-#include <stm32f10x_rcc.h>
-#include <stm32f10x_gpio.h>
-#include "defines.h"
+#include <stm32f1xx_hal_rcc.h>
+#include <stm32f1xx_hal_gpio.h>
 #include "tm_stm32f1_fonts.h"
-#include "tm_stm32f1_gpio.h"
-#include "tm_stm32f1_spi.h"
-//#include "tm_stm32f1_dma.h"
-//#include "tm_stm32f1_spi_dma.h"
+#include "SPI.h"
 
 /**
  * @defgroup TM_ILI9341_Macros
  * @brief    Library defines
  * @{
  */
-
-/**
- * @brief  This SPI pins are used on STM32F429-Discovery board
- */
-#ifndef ILI9341_SPI
-#define ILI9341_SPI           SPI1
-#define ILI9341_SPI_PINS      TM_SPI_PinsPack_1
-#endif
 
 /**
  * @brief  CS PIN for SPI, used as on STM32F429-Discovery board
@@ -170,6 +158,14 @@ VCC          3.3V         Positive power supply
 #ifndef ILI9341_RST_PIN
 #define ILI9341_RST_PORT      GPIOC
 #define ILI9341_RST_PIN       GPIO_PIN_0
+#endif
+
+/**
+ * @brief LED for LCD
+ */
+#ifndef ILI9341_LED_PIN
+#define ILI9341_LED_PORT	GPIOC
+#define ILI9341_LED_PIN		GPIO_PIN_2
 #endif
 
 /* LCD settings */

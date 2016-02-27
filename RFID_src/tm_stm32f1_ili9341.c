@@ -38,12 +38,15 @@ typedef struct {
 } TM_ILI931_Options_t;
 
 /* Pin definitions */
-#define ILI9341_RST_SET				GPIO_SetBits(ILI9341_RST_PORT, ILI9341_RST_PIN)
-#define ILI9341_RST_RESET			GPIO_ResetBits(ILI9341_RST_PORT, ILI9341_RST_PIN)
-#define ILI9341_CS_SET				GPIO_SetBits(ILI9341_CS_PORT, ILI9341_CS_PIN)
-#define ILI9341_CS_RESET			GPIO_ResetBits(ILI9341_CS_PORT, ILI9341_CS_PIN)
-#define ILI9341_WRX_SET				GPIO_SetBits(ILI9341_WRX_PORT, ILI9341_WRX_PIN)
-#define ILI9341_WRX_RESET			GPIO_ResetBits(ILI9341_WRX_PORT, ILI9341_WRX_PIN)
+#define ILI9341_RST_SET		HAL_GPIO_WritePin(ILI9341_RST_PORT, ILI9341_RST_PIN, GPIO_PIN_SET)
+#define ILI9341_RST_RESET	HAL_GPIO_WritePin(ILI9341_RST_PORT, ILI9341_RST_PIN, GPIO_PIN_RESET)
+#define ILI9341_CS_SET		HAL_GPIO_WritePin(ILI9341_CS_PORT, ILI9341_CS_PIN, GPIO_PIN_SET)
+#define ILI9341_CS_RESET	HAL_GPIO_WritePin(ILI9341_CS_PORT, ILI9341_CS_PIN, GPIO_PIN_RESET)
+#define ILI9341_WRX_SET		HAL_GPIO_WritePin(ILI9341_WRX_PORT, ILI9341_WRX_PIN, GPIO_PIN_SET)
+#define ILI9341_WRX_RESET	HAL_GPIO_WritePin(ILI9341_WRX_PORT, ILI9341_WRX_PIN, GPIO_PIN_RESET)
+#define ILI9341_LED_SET		HAL_GPIO_WritePin(ILI9341_LED_PORT, ILI9341_LED_PIN, GPIO_PIN_SET)
+#define ILI9341_LED_RESET	HAL_GPIO_WritePin(ILI9341_LED_PORT, ILI9341_LED_PIN, GPIO_PIN_RESET)
+
 
 /* Private defines */
 #define ILI9341_RESET				0x01
@@ -92,24 +95,28 @@ void TM_ILI9341_SetCursorPosition(uint16_t x1, uint16_t y1, uint16_t x2, uint16_
 void TM_ILI9341_INT_Fill(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_t color);
 
 void TM_ILI9341_Init() {
-	/* Init WRX pin */
-	TM_GPIO_Init(ILI9341_WRX_PORT, ILI9341_WRX_PIN, TM_GPIO_Mode_OUT, TM_GPIO_OType_PP, TM_GPIO_PuPd_NOPULL, TM_GPIO_Speed_Medium);
-	
+	GPIO_InitTypeDef gpio_init = 
+	{
+		ILI9341_RST_PIN  | ILI9341_WRX_PIN | ILI9341_LED_PIN, 
+		GPIO_MODE_OUTPUT_PP,
+		GPIO_NOPULL,
+		GPIO_SPEED_FREQ_MEDIUM
+	};
+	/*TODO: Init RCC clock for used ports. This is hardcoded. How to change it?*/
+	__HAL_RCC_GPIOC_CLK_ENABLE();
+	__HAL_RCC_GPIOA_CLK_ENABLE();
+	/* Init RST, WRX, LED pin */
+	HAL_GPIO_Init(ILI9341_RST_PORT, &gpio_init);	
 	/* Init CS pin */
-	TM_GPIO_Init(ILI9341_CS_PORT, ILI9341_CS_PIN, TM_GPIO_Mode_OUT, TM_GPIO_OType_PP, TM_GPIO_PuPd_NOPULL, TM_GPIO_Speed_Medium);
-	
-	/* Init RST pin */
-	TM_GPIO_Init(ILI9341_RST_PORT, ILI9341_RST_PIN, TM_GPIO_Mode_OUT, TM_GPIO_OType_PP, TM_GPIO_PuPd_UP, TM_GPIO_Speed_Low);
-
+	gpio_init.Pin = ILI9341_CS_PIN;
+	HAL_GPIO_Init(ILI9341_CS_PORT, &gpio_init);
 	/* CS high */
 	ILI9341_CS_SET;
-	
+	/* LED high */
+	ILI9341_LED_SET;
 	/* Init SPI */
-	TM_SPI_Init(ILI9341_SPI, ILI9341_SPI_PINS);
-	
-	/* Init DMA for SPI */
-	//TM_SPI_DMA_Init(ILI9341_SPI);
-	
+	SPI_check_return(SPI_1_init());
+		
 	/* Init LCD */
 	TM_ILI9341_InitLCD();	
 	
@@ -245,14 +252,14 @@ void TM_ILI9341_DisplayOff(void) {
 void TM_ILI9341_SendCommand(uint8_t data) {
 	ILI9341_WRX_RESET;
 	ILI9341_CS_RESET;
-	TM_SPI_Send(ILI9341_SPI, data);
+	SPI_1_send(&data);
 	ILI9341_CS_SET;
 }
 
 void TM_ILI9341_SendData(uint8_t data) {
 	ILI9341_WRX_SET;
 	ILI9341_CS_RESET;
-	TM_SPI_Send(ILI9341_SPI, data);
+	SPI_1_send(&data);
 	ILI9341_CS_SET;
 }
 
@@ -299,27 +306,32 @@ void TM_ILI9341_INT_Fill(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uin
 	/* Send everything */
 	ILI9341_CS_RESET;
 	ILI9341_WRX_SET;
-	
-	/* Go to 16-bit SPI mode */
-	TM_SPI_SetDataSize(ILI9341_SPI, TM_SPI_DataSize_16b);
-	
-	/* Send first 65535 bytes, SPI MUST BE IN 16-bit MODE */
-	TM_SPI_DMA_SendHalfWord(ILI9341_SPI, color, (pixels_count > 0xFFFF) ? 0xFFFF : pixels_count);
-	/* Wait till done */
-	while (TM_SPI_DMA_Working(ILI9341_SPI));
-	
-	/* Check again */
-	if (pixels_count > 0xFFFF) {
-		/* Send remaining data */
-		TM_SPI_DMA_SendHalfWord(ILI9341_SPI, color, pixels_count - 0xFFFF);
-		/* Wait till done */
-		while (TM_SPI_DMA_Working(ILI9341_SPI));
+	for (uint32_t it = 0; it < pixels_count; it++) {
+		TM_ILI9341_SendData(color >> 8);
+		TM_ILI9341_SendData(color & 0xFF);
 	}
-	
 	ILI9341_CS_SET;
 
-	/* Go back to 8-bit SPI mode */
-	TM_SPI_SetDataSize(ILI9341_SPI, TM_SPI_DataSize_8b);
+	/* Go to 16-bit SPI mode */
+//	TM_SPI_SetDataSize(ILI9341_SPI, TM_SPI_DataSize_16b);
+	
+//	/* Send first 65535 bytes, SPI MUST BE IN 16-bit MODE */
+//	TM_SPI_DMA_SendHalfWord(ILI9341_SPI, color, (pixels_count > 0xFFFF) ? 0xFFFF : pixels_count);
+//	/* Wait till done */
+//	while (TM_SPI_DMA_Working(ILI9341_SPI));
+	
+	/* Check again */
+//	if (pixels_count > 0xFFFF) {
+//		/* Send remaining data */
+//		TM_SPI_DMA_SendHalfWord(ILI9341_SPI, color, pixels_count - 0xFFFF);
+//		/* Wait till done */
+//		while (TM_SPI_DMA_Working(ILI9341_SPI));
+//	}
+	
+//	ILI9341_CS_SET;
+
+//	/* Go back to 8-bit SPI mode */
+//	TM_SPI_SetDataSize(ILI9341_SPI, TM_SPI_DataSize_8b);
 }
 
 void TM_ILI9341_Delay(volatile unsigned int delay) {
