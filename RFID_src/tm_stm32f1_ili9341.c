@@ -104,21 +104,26 @@ void TM_ILI9341_Init() {
 	};
 	__HAL_RCC_GPIOC_CLK_ENABLE();
 	__HAL_RCC_GPIOA_CLK_ENABLE();
+
 	/* Init RST, WRX, LED pin */
 	HAL_GPIO_Init(ILI9341_RST_PORT, &gpio_init);	
+
 	/* Init CS pin */
 	gpio_init.Pin = ILI9341_CS_PIN;
 	HAL_GPIO_Init(ILI9341_CS_PORT, &gpio_init);
+
 	/* CS high */
 	ILI9341_CS_SET;
+
 	/* LED high */
 	ILI9341_LED_SET;
+
 	/* Init SPI */
-	SPI_check_return(SPI_1_init());
+	SPI_show_error(SPI_1_init());
 		
 	/* Init LCD */
 	TM_ILI9341_InitLCD();	
-	
+
 	/* Set default settings */
 	ILI9341_x = ILI9341_y = 0;
 	ILI9341_Opts.width = ILI9341_WIDTH;
@@ -126,7 +131,7 @@ void TM_ILI9341_Init() {
 	ILI9341_Opts.orientation = TM_ILI9341_Portrait;
 	
 	/* Fill with white color */
-	TM_ILI9341_Fill(ILI9341_COLOR_WHITE);
+	TM_ILI9341_Fill(ILI9341_COLOR_RED);
 }
 
 void TM_ILI9341_InitLCD(void) {
@@ -308,9 +313,10 @@ void TM_ILI9341_INT_Fill(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uin
 /*	for (int i = 0; i < 0xFFFF; i++) {
 		TM_ILI9341_SendData(color);
 	} */
-	SPI_1_DMA_send((uint8_t *)&color, ( 2 * pixels_count > 0xFFFF) ?  0xFFFF : 2 * pixels_count); 
+	SPI_1_DMA_send((uint8_t *)&color, ( pixels_count > 0xFFFF) ?  0xFFFF : pixels_count); 
 
-	/* TODO: Not all pixels were written! */
+	if (pixels_count > 0xFFFF)
+		SPI_1_DMA_send((uint8_t *)&color, pixels_count - 0xFFFF);
 	
 	ILI9341_CS_SET;
 

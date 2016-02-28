@@ -5,7 +5,7 @@ static DMA_InitTypeDef dma_init;
 static DMA_HandleTypeDef dma_handler;
 
 
-void SPI_check_return(HAL_StatusTypeDef rt)
+void SPI_show_error(HAL_StatusTypeDef rt)
 {
 	if (rt) {
 		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9, GPIO_PIN_SET);
@@ -13,14 +13,11 @@ void SPI_check_return(HAL_StatusTypeDef rt)
 	}
 }
 
-void DMA1_Channel3_IRQHandler() 
+void DMA1_Channel3_IRQHandler(void) 
 {
-	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9, GPIO_PIN_SET);
-	for(int i = 0; i < 250000; i++);
-	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9, GPIO_PIN_RESET);
-	DMA1->IFCR |= DMA_IFCR_CGIF3 | DMA_IFCR_CTEIF3 | DMA_IFCR_CHTIF3 |
-		      DMA_IFCR_CTCIF3;
+	HAL_DMA_IRQHandler(&dma_handler);
 }
+
 
 
 static HAL_StatusTypeDef SPI_1_DMA_init(void)
@@ -39,17 +36,22 @@ static HAL_StatusTypeDef SPI_1_DMA_init(void)
 	
 	dma_handler.Instance = DMA1_Channel3;
 	dma_handler.Init = dma_init;
-
+	dma_handler.Parent = &spi_1_handler;
+	
 	__HAL_RCC_DMA1_CLK_ENABLE();
+
 	rt = HAL_DMA_Init(&dma_handler);
 	if (rt) {
 		__HAL_RCC_DMA1_CLK_DISABLE();
 		return rt;
 	}
+	
 	spi_1_handler.hdmatx = &dma_handler;
+	
 	HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
 	HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 0, 0);
-	HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);	
+	HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
+	
 	return HAL_OK;
 }
 
@@ -63,6 +65,7 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi)
 		GPIO_NOPULL,
 		GPIO_SPEED_FREQ_MEDIUM
 	};
+
 	GPIO_InitTypeDef gpio_miso = 
 	{
 		GPIO_PIN_6,
@@ -92,15 +95,51 @@ static void SPI_handler_basic_init(SPI_HandleTypeDef *spi_handler)
 	spi_handler->Init.TIMode = SPI_TIMODE_DISABLE;
 	spi_handler->Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
 }
+static uint16_t SPI_wait_for_EOT(SPI_HandleTypeDef *handler)
+{
+	uint16_t temp;
+	while(handler->Instance->CR2 & SPI_CR2_TXDMAEN);
+	while(handler->Instance->CR2 & SPI_CR2_RXDMAEN);
+	while(handler->Instance->SR & SPI_SR_RXNE) 
+		temp = handler->Instance->DR;
+	while(!(handler->Instance->SR & SPI_SR_TXE));
+	while(handler->Instance->SR & SPI_SR_BSY);
+	return temp;
+}
 
 HAL_StatusTypeDef SPI_1_DMA_send(uint8_t *data, uint16_t bytes)
 {
 	HAL_StatusTypeDef rt;
-	while(SPI1->SR & SPI_SR_BSY);
+
+	/* Waiting to disable SPI */
+	SPI_wait_for_EOT(&spi_1_handler);
+
+	/* Disabling SPI */
+	spi_1_handler.Instance->CR1 &= ~SPI_CR1_SPE;
+	
+	/* Changing data frame format to 16 bits */
+	spi_1_handler.Instance->CR1 |= SPI_CR1_DFF; 
+	
+	/* Enabling SPI */
+	spi_1_handler.Instance->CR1 |= SPI_CR1_SPE;
+	
 	rt = HAL_SPI_Transmit_DMA(&spi_1_handler, data, bytes);	
 	if (rt)
-		SPI_check_return(rt);
-	while(SPI1->SR & SPI_SR_BSY);
+		SPI_show_error(rt);
+	
+	/* Waiting to disable SPI */
+	SPI_wait_for_EOT(&spi_1_handler);
+	
+	/* Disabling SPI */
+	spi_1_handler.Instance->CR1 &= ~SPI_CR1_SPE;
+	
+	/* Changing data frame format to 8 bits */
+	spi_1_handler.Instance->CR1 &= ~SPI_CR1_DFF; 
+	
+	/* Enabling SPI */
+	spi_1_handler.Instance->CR1 |= SPI_CR1_SPE;
+
+	
 	return rt;
 }
 
@@ -117,6 +156,6 @@ HAL_StatusTypeDef SPI_1_init(void)
 
 HAL_StatusTypeDef SPI_1_send(uint8_t *data)
 {
-	while(SPI1->SR & SPI_SR_BSY);
+	SPI_wait_for_EOT(&spi_1_handler);
 	return HAL_SPI_Transmit(&spi_1_handler, data, 1, 0xFFFF); 
 }
