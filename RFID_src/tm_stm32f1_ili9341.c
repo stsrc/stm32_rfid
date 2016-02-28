@@ -102,7 +102,6 @@ void TM_ILI9341_Init() {
 		GPIO_NOPULL,
 		GPIO_SPEED_FREQ_MEDIUM
 	};
-	/*TODO: Init RCC clock for used ports. This is hardcoded. How to change it?*/
 	__HAL_RCC_GPIOC_CLK_ENABLE();
 	__HAL_RCC_GPIOA_CLK_ENABLE();
 	/* Init RST, WRX, LED pin */
@@ -127,7 +126,7 @@ void TM_ILI9341_Init() {
 	ILI9341_Opts.orientation = TM_ILI9341_Portrait;
 	
 	/* Fill with white color */
-	TM_ILI9341_Fill(ILI9341_COLOR_BLUE);
+	TM_ILI9341_Fill(ILI9341_COLOR_WHITE);
 }
 
 void TM_ILI9341_InitLCD(void) {
@@ -306,32 +305,15 @@ void TM_ILI9341_INT_Fill(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uin
 	/* Send everything */
 	ILI9341_CS_RESET;
 	ILI9341_WRX_SET;
-	for (uint32_t it = 0; it < pixels_count; it++) {
-		TM_ILI9341_SendData(color >> 8);
-		TM_ILI9341_SendData(color & 0xFF);
-	}
+/*	for (int i = 0; i < 0xFFFF; i++) {
+		TM_ILI9341_SendData(color);
+	} */
+	SPI_1_DMA_send((uint8_t *)&color, ( 2 * pixels_count > 0xFFFF) ?  0xFFFF : 2 * pixels_count); 
+
+	/* TODO: Not all pixels were written! */
+	
 	ILI9341_CS_SET;
 
-	/* Go to 16-bit SPI mode */
-//	TM_SPI_SetDataSize(ILI9341_SPI, TM_SPI_DataSize_16b);
-	
-//	/* Send first 65535 bytes, SPI MUST BE IN 16-bit MODE */
-//	TM_SPI_DMA_SendHalfWord(ILI9341_SPI, color, (pixels_count > 0xFFFF) ? 0xFFFF : pixels_count);
-//	/* Wait till done */
-//	while (TM_SPI_DMA_Working(ILI9341_SPI));
-	
-	/* Check again */
-//	if (pixels_count > 0xFFFF) {
-//		/* Send remaining data */
-//		TM_SPI_DMA_SendHalfWord(ILI9341_SPI, color, pixels_count - 0xFFFF);
-//		/* Wait till done */
-//		while (TM_SPI_DMA_Working(ILI9341_SPI));
-//	}
-	
-//	ILI9341_CS_SET;
-
-//	/* Go back to 8-bit SPI mode */
-//	TM_SPI_SetDataSize(ILI9341_SPI, TM_SPI_DataSize_8b);
 }
 
 void TM_ILI9341_Delay(volatile unsigned int delay) {
