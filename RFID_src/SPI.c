@@ -90,7 +90,7 @@ static void SPI_handler_basic_init(SPI_HandleTypeDef *spi_handler)
 	spi_handler->Init.CLKPolarity = SPI_POLARITY_LOW;
 	spi_handler->Init.CLKPhase = SPI_PHASE_1EDGE;
 	spi_handler->Init.NSS = SPI_NSS_SOFT;
-	spi_handler->Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64;
+	spi_handler->Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
 	spi_handler->Init.FirstBit = SPI_FIRSTBIT_MSB;
 	spi_handler->Init.TIMode = SPI_TIMODE_DISABLE;
 	spi_handler->Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -158,6 +158,18 @@ HAL_StatusTypeDef SPI_1_send(uint8_t *data)
 	rt = HAL_SPI_Transmit(&spi_1_handler, data, 1, 0xFFFF); 
 	SPI_wait_for_EOT(&spi_1_handler);
 	return rt;
+}
+
+HAL_StatusTypeDef SPI_1_change_speed(uint32_t *old, uint32_t new)
+{
+	if ((new > SPI_CR1_BR) || ((new < SPI_CR1_BR_0) & (new != 0)))
+		return HAL_ERROR;
+	if (old != NULL)
+		*old = SPI1->CR1 & SPI_CR1_BR;
+	SPI_wait_for_EOT(&spi_1_handler);
+	SPI1->CR1 &= ~SPI_CR1_BR;
+	SPI1->CR1 |= new;
+	return HAL_OK;
 }
 
 HAL_StatusTypeDef SPI_1_read(uint8_t *data, uint16_t bytes)

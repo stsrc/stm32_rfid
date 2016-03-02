@@ -64,10 +64,13 @@ static void touch_calculate_pos(uint16_t input, uint16_t *val, uint16_t max)
 
 static inline void xpt2046_transmit(uint8_t *cmd, uint8_t *rx, uint16_t bytes)
 {
+	uint32_t old_speed, new_speed = SPI_BAUDRATEPRESCALER_64;
+	SPI_1_change_speed(&old_speed, new_speed);
 	XPT2046_CS_RESET;	
 	SPI_1_send(cmd);
 	SPI_1_read(rx, bytes);
-	XPT2046_CS_SET;	
+	XPT2046_CS_SET;
+	SPI_1_change_speed(NULL, old_speed);	
 }
 
 void xpt2046_init(void)
