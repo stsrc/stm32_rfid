@@ -14,13 +14,7 @@
 /* If uSD is used, then include the uSD BSP header file. 
    Replace 'stm32xxx' with your EVAL board name, ex: stm324x9i_eval_sd.h 
    */
-#include "stm32xxx_eval_sd.h"
-
-/* If USB Host MSC is used, then need to include the USBH and UBSH MSC core header files */
-#include "usbh_core.h"
-#include "usbh_msc.h"
-/* hUSBH to be updated with the USBH handle defined in the application code */
-#define  HOST_HANDLE   hUSBH 
+#include "stm3210c_eval_sd.h"
 
 /*---------------------------------------------------------------------------/
 / Functions and Buffer Configurations
@@ -130,7 +124,7 @@
 /   1    - ASCII (No extended character. Valid for only non-LFN configuration.) */
 
 
-#define	_USE_LFN                3
+#define	_USE_LFN                0
 #define	_MAX_LFN                255  /* Maximum LFN length to handle (12 to 255) */
 /* The _USE_LFN option switches the LFN feature.
 /
@@ -256,7 +250,7 @@
 /      lock feature is independent of re-entrancy. */
 
 
-#define _FS_REENTRANT           1
+#define _FS_REENTRANT           0
 #define _FS_TIMEOUT             1000
 #define	_SYNC_t                 osSemaphoreId
 /* The _FS_REENTRANT option switches the re-entrancy (thread safe) of the FatFs

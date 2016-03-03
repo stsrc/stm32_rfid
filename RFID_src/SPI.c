@@ -80,8 +80,8 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi)
 	/* Enabling SPI2 pins */
 	gpio_sck_mosi.Pin = GPIO_PIN_15 | GPIO_PIN_13;
 	gpio_miso.Pin = GPIO_PIN_14;
-	__HAL_RCC_GPIOB_CLK_ENABLE();
 	__HAL_RCC_SPI2_CLK_ENABLE();
+	__HAL_RCC_GPIOB_CLK_ENABLE();
 	HAL_GPIO_Init(GPIOB, &gpio_sck_mosi);
 	HAL_GPIO_Init(GPIOB, &gpio_miso);
 }
@@ -96,7 +96,7 @@ static void SPI_handler_basic_init(SPI_HandleTypeDef *spi_handler,
 	spi_handler->Init.CLKPolarity = SPI_POLARITY_LOW;
 	spi_handler->Init.CLKPhase = SPI_PHASE_1EDGE;
 	spi_handler->Init.NSS = SPI_NSS_SOFT;
-	spi_handler->Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+	spi_handler->Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
 	spi_handler->Init.FirstBit = SPI_FIRSTBIT_MSB;
 	spi_handler->Init.TIMode = SPI_TIMODE_DISABLE;
 	spi_handler->Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -191,7 +191,8 @@ HAL_StatusTypeDef SPI_1_read(uint8_t *data, uint16_t bytes)
 HAL_StatusTypeDef SPI_2_init(void)
 {
 	HAL_StatusTypeDef rt;
-	memset(&spi_1_handler, 0, sizeof(SPI_HandleTypeDef));
+	SPI2->CR1 = 0;
+	memset(&spi_2_handler, 0, sizeof(SPI_HandleTypeDef));
 	SPI_handler_basic_init(&spi_2_handler, SPI2);		
 	rt = HAL_SPI_Init(&spi_2_handler);
 	if (rt)

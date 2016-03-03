@@ -68,7 +68,7 @@ void SD_IO_Init(void)
   /* Configure SD_CS_PIN pin: SD Card CS pin */
   gpioinitstruct.Pin    = SD_CS_PIN;
   gpioinitstruct.Mode   = GPIO_MODE_OUTPUT_PP;
-  gpioinitstruct.Pull   = GPIO_PULLUP;
+  gpioinitstruct.Pull   = GPIO_NOPULL;
   gpioinitstruct.Speed  = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(SD_CS_GPIO_PORT, &gpioinitstruct);
 
@@ -144,7 +144,7 @@ HAL_StatusTypeDef SD_IO_WriteCmd(uint8_t Cmd, uint32_t Arg, uint8_t Crc, uint8_t
   {
     SD_IO_WriteByte(frame[counter]); /* Send the Cmd bytes */
   }
-
+  SD_CS_HIGH();
   if(Response != SD_NO_RESPONSE_EXPECTED)
   {
     return SD_IO_WaitResponse(Response);
@@ -209,16 +209,8 @@ uint8_t BSP_SD_Init(void)
   /* Configure IO functionalities for SD pin */
   SD_IO_Init();
 
-  /* Check SD card detect pin */
-  if(BSP_SD_IsDetected()==SD_NOT_PRESENT) 
-  {
-    SdStatus = SD_NOT_PRESENT;
-    return MSD_ERROR;
-  }
-  else
-  {
+  /* TODO - wHAT IF CARD IS NOT PRESENT? */
     SdStatus = SD_PRESENT;
-  }
   
   /* SD initialized and set to SPI mode properly */
   return (SD_GoIdleState());
@@ -340,7 +332,7 @@ uint8_t BSP_SD_WriteBlocks(uint32_t* p32Data, uint64_t WriteAddr, uint16_t Block
 
     /* Send dummy byte */
     SD_IO_WriteByte(SD_DUMMY_BYTE);
-
+    SD_CS_LOW();
     /* Send the data token to signify the start of the data */
     SD_IO_WriteByte(SD_START_DATA_SINGLE_BLOCK_WRITE);
 
@@ -356,7 +348,8 @@ uint8_t BSP_SD_WriteBlocks(uint32_t* p32Data, uint64_t WriteAddr, uint16_t Block
 
     /* Set next write address */
     offset += BlockSize;
-
+    SD_CS_HIGH();
+    /* XXX: THIS MAY FAIL! */
     /* Put CRC bytes (not really needed by us, but required by SD) */
     SD_IO_ReadByte();
     SD_IO_ReadByte();

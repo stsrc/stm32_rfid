@@ -62,15 +62,14 @@
    conditions (interrupts routines ...). */   
 #define EVAL_SPIx_TIMEOUT_MAX                   1000
 
-
-#define SD_CS_LOW()       HAL_GPIO_WritePin(SD_CS_GPIO_PORT, SD_CS_PIN, GPIO_PIN_RESET)
-#define SD_CS_HIGH()      HAL_GPIO_WritePin(SD_CS_GPIO_PORT, SD_CS_PIN, GPIO_PIN_SET)
-
 #define SD_CS_PIN                               GPIO_PIN_12        /* PA.04*/
 #define SD_CS_GPIO_PORT                         GPIOB
 #define SD_CS_GPIO_CLK_ENABLE()                 __HAL_RCC_GPIOB_CLK_ENABLE()
 #define SD_CS_GPIO_CLK_DISABLE()                __HAL_RCC_GPIOB_CLK_DISABLE()
-  
+
+#define SD_CS_LOW()       HAL_GPIO_WritePin(SD_CS_GPIO_PORT, SD_CS_PIN, GPIO_PIN_RESET)
+#define SD_CS_HIGH()      HAL_GPIO_WritePin(SD_CS_GPIO_PORT, SD_CS_PIN, GPIO_PIN_SET)
+
 #define MSD_OK         0x00
 #define MSD_ERROR      0x01
 
