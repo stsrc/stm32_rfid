@@ -32,22 +32,20 @@ int main(void)
 	__HAL_RCC_GPIOC_CLK_ENABLE();
 	HAL_GPIO_Init(GPIOC, &gpio_str);
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9, GPIO_PIN_RESET);
-	//TM_ILI9341_Init();
-	//xpt2046_init();
+	
+	TM_ILI9341_Init();
+	xpt2046_init();
 
 	ret = FATFS_LinkDriver((Diskio_drvTypeDef *)&SD_Driver, sd_path);
 	if (ret != FR_OK)
 		goto err;
 	ret = f_mount(&SDFatFs, sd_path, 1);
-	if (ret != FR_OK) {
-		//ret = f_mkfs(sd_path, 0, 0);
-		//if (ret != FR_OK)
-			goto err;
-	}
+	if (ret != FR_OK) 
+		goto err;
 	ret = f_open(&MyFile, "test.txt", FA_CREATE_ALWAYS | FA_WRITE);
   if (ret != FR_OK)
 		goto err;	
-	ret = f_write(&MyFile, text_to_write, sizeof(text_to_write) + 1, (UINT *)&bytes_written);
+	ret = f_write(&MyFile, text_to_write, strlen(text_to_write) + 1, (UINT *)&bytes_written);
 	if (ret != FR_OK)
 		goto err;
 	ret = f_close(&MyFile);
