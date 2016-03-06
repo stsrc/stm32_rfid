@@ -48,13 +48,10 @@ static uint8_t SD_SendCmd(uint8_t Cmd, uint32_t Arg, uint8_t Crc, uint8_t Respon
 void                      SD_IO_Init(void);
 HAL_StatusTypeDef         SD_IO_WriteCmd(uint8_t Cmd, uint32_t Arg, uint8_t Crc, uint8_t Response);
 HAL_StatusTypeDef         SD_IO_WaitResponse(uint8_t Response);
-void                      SD_IO_WriteDummy(void);
 void                      SD_IO_WriteByte(uint8_t Data);
 uint8_t                   SD_IO_ReadByte(void);
 
 uint32_t SpixTimeout = EVAL_SPIx_TIMEOUT_MAX;   
-
-#define SD_DETECT_GPIO_CLK_ENABLE() __HAL_RCC_GPIOE_CLK_ENABLE()
 
 void SD_IO_Init(void)
 {
@@ -63,7 +60,6 @@ void SD_IO_Init(void)
 
   /* SD_CS_GPIO and SD_DETECT_GPIO Periph clock enable */
   SD_CS_GPIO_CLK_ENABLE();
-  SD_DETECT_GPIO_CLK_ENABLE();
 
   /* Configure SD_CS_PIN pin: SD Card CS pin */
   gpioinitstruct.Pin    = SD_CS_PIN;
@@ -106,13 +102,9 @@ void SD_IO_WriteByte(uint8_t Data)
   */
 uint8_t SD_IO_ReadByte(void)
 {
-  uint8_t data = 0;
-  
-  /* Get the received data */
-  SPI_2_read(&data, 1);
-
-  /* Return the shifted data */
-  return data;
+  uint8_t data = 0xFF;
+	SPI_2_read(&data, 1);
+	return data;
 }
 
 /**
@@ -127,7 +119,7 @@ HAL_StatusTypeDef SD_IO_WriteCmd(uint8_t Cmd, uint32_t Arg, uint8_t Crc, uint8_t
 {
   uint32_t counter = 0x00;
   uint8_t frame[6];
-
+  HAL_StatusTypeDef ret = HAL_OK;
   /* Prepare Frame to send */
   frame[0] = (Cmd | 0x40); /* Construct byte 1 */
   frame[1] = (uint8_t)(Arg >> 24); /* Construct byte 2 */
@@ -136,21 +128,19 @@ HAL_StatusTypeDef SD_IO_WriteCmd(uint8_t Cmd, uint32_t Arg, uint8_t Crc, uint8_t
   frame[4] = (uint8_t)(Arg); /* Construct byte 5 */
   frame[5] = (Crc); /* Construct CRC: byte 6 */
   
-  /* SD chip select low */
-  SD_CS_LOW();
-    
+	SD_CS_LOW();
+
   /* Send Frame */
   for (counter = 0; counter < 6; counter++)
   {
     SD_IO_WriteByte(frame[counter]); /* Send the Cmd bytes */
   }
-  SD_CS_HIGH();
-  if(Response != SD_NO_RESPONSE_EXPECTED)
+	 
+ 	if(Response != SD_NO_RESPONSE_EXPECTED)
   {
-    return SD_IO_WaitResponse(Response);
+	  ret = SD_IO_WaitResponse(Response);
   }
-  
-  return HAL_OK;
+  return ret;
 }
 
 /**
@@ -182,19 +172,11 @@ HAL_StatusTypeDef SD_IO_WaitResponse(uint8_t Response)
   }
 }
 
-/**
-  * @brief  Send dummy byte with CS High
-  * @retval None
-  */
 void SD_IO_WriteDummy(void)
 {
-    /* SD chip select high */
-    SD_CS_HIGH();
-    
-    /* Send Dummy byte 0xFF */
-    SD_IO_WriteByte(SD_DUMMY_BYTE);
+	SD_CS_HIGH();
+	SD_IO_WriteByte(SD_DUMMY_BYTE);
 }
-
 
 __IO uint8_t SdStatus = SD_PRESENT;
 
@@ -256,16 +238,16 @@ uint8_t BSP_SD_ReadBlocks(uint32_t* p32Data, uint64_t ReadAddr, uint16_t BlockSi
   
   /* Send CMD16 (SD_CMD_SET_BLOCKLEN) to set the size of the block and 
      Check if the SD acknowledged the set block length command: R1 response (0x00: no errors) */
-  if (SD_IO_WriteCmd(SD_CMD_SET_BLOCKLEN, BlockSize, 0xFF, SD_RESPONSE_NO_ERROR) != HAL_OK)
+ /* if (SD_IO_WriteCmd(SD_CMD_SET_BLOCKLEN, BlockSize, 0xFF, SD_RESPONSE_NO_ERROR) != HAL_OK)
   {
     return MSD_ERROR;
-  }
+  } */
 
   /* Data transfer */
   while (NumberOfBlocks--)
   {
     /* Send dummy byte: 8 Clock pulses of delay */
-    SD_IO_WriteDummy();
+     SD_IO_WriteDummy();
 
     /* Send CMD17 (SD_CMD_READ_SINGLE_BLOCK) to read one block */
     /* Check if the SD acknowledged the read block command: R1 response (0x00: no errors) */
@@ -319,8 +301,8 @@ uint8_t BSP_SD_WriteBlocks(uint32_t* p32Data, uint64_t WriteAddr, uint16_t Block
   uint32_t counter = 0, offset = 0;
   uint8_t rvalue = MSD_ERROR;
   uint8_t *pData = (uint8_t *)p32Data;
-  
-  /* Data transfer */
+
+	/* Data transfer */
   while (NumberOfBlocks--)
   {
     /* Send CMD24 (SD_CMD_WRITE_SINGLE_BLOCK) to write blocks  and
@@ -332,7 +314,6 @@ uint8_t BSP_SD_WriteBlocks(uint32_t* p32Data, uint64_t WriteAddr, uint16_t Block
 
     /* Send dummy byte */
     SD_IO_WriteByte(SD_DUMMY_BYTE);
-    SD_CS_LOW();
     /* Send the data token to signify the start of the data */
     SD_IO_WriteByte(SD_START_DATA_SINGLE_BLOCK_WRITE);
 
@@ -348,8 +329,7 @@ uint8_t BSP_SD_WriteBlocks(uint32_t* p32Data, uint64_t WriteAddr, uint16_t Block
 
     /* Set next write address */
     offset += BlockSize;
-    SD_CS_HIGH();
-    /* XXX: THIS MAY FAIL! */
+
     /* Put CRC bytes (not really needed by us, but required by SD) */
     SD_IO_ReadByte();
     SD_IO_ReadByte();

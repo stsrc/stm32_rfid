@@ -11,7 +11,6 @@
 
 int main(void)
 {
-	SD_CardInfo Card_info;
 	uint8_t ret;
 	uint32_t bytes_written;
 	char *text_to_write = "Testing Fatfs\0";
@@ -29,25 +28,24 @@ int main(void)
 	};
 	
 	memset(sd_path, 0, sizeof(sd_path));
-	strcat(sd_path, "4E4A-6CAF\0");
+
 	__HAL_RCC_GPIOC_CLK_ENABLE();
 	HAL_GPIO_Init(GPIOC, &gpio_str);
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9, GPIO_PIN_RESET);
-	TM_ILI9341_Init();
-	xpt2046_init();
-	SPI_2_init();		
+	//TM_ILI9341_Init();
+	//xpt2046_init();
+
 	ret = FATFS_LinkDriver((Diskio_drvTypeDef *)&SD_Driver, sd_path);
 	if (ret != FR_OK)
 		goto err;
-	ret = f_mount(&SDFatFs, sd_path, 0);
-	if (ret != FR_OK)
-		goto err;
-	BSP_SD_GetCardInfo(&Card_info);
-	ret = f_mkfs(sd_path, 0, 0);
-	if (ret != FR_OK)
-		goto err;
+	ret = f_mount(&SDFatFs, sd_path, 1);
+	if (ret != FR_OK) {
+		//ret = f_mkfs(sd_path, 0, 0);
+		//if (ret != FR_OK)
+			goto err;
+	}
 	ret = f_open(&MyFile, "test.txt", FA_CREATE_ALWAYS | FA_WRITE);
-        if (ret != FR_OK)
+  if (ret != FR_OK)
 		goto err;	
 	ret = f_write(&MyFile, text_to_write, sizeof(text_to_write) + 1, (UINT *)&bytes_written);
 	if (ret != FR_OK)

@@ -43,18 +43,7 @@
 #include "SPI.h"
 
 /*##################### SPI2 ###################################*/
-#define EVAL_SPIx                               SPI2
-#define EVAL_SPIx_CLK_ENABLE()                  __HAL_RCC_SPI2_CLK_ENABLE()
-#define EVAL_SPIx_SCK_GPIO_PORT                 GPIOB             /* PC.10*/
-#define EVAL_SPIx_SCK_PIN                       GPIO_PIN_13
-#define EVAL_SPIx_SCK_GPIO_CLK_ENABLE()         __HAL_RCC_GPIOC_CLK_ENABLE()
-#define EVAL_SPIx_SCK_GPIO_CLK_DISABLE()        __HAL_RCC_GPIOC_CLK_DISABLE()
 
-#define EVAL_SPIx_MISO_MOSI_GPIO_PORT           GPIOB
-#define EVAL_SPIx_MISO_MOSI_GPIO_CLK_ENABLE()   __HAL_RCC_GPIOB_CLK_ENABLE()
-#define EVAL_SPIx_MISO_MOSI_GPIO_CLK_DISABLE()  __HAL_RCC_GPIOB_CLK_DISABLE()
-#define EVAL_SPIx_MISO_PIN                      GPIO_PIN_14       
-#define EVAL_SPIx_MOSI_PIN                      GPIO_PIN_15     
 /* Maximum Timeout values for flags waiting loops. These timeouts are not based
    on accurate values, they just guarantee that the application will not remain
    stuck if the SPI communication is corrupted.
@@ -62,7 +51,7 @@
    conditions (interrupts routines ...). */   
 #define EVAL_SPIx_TIMEOUT_MAX                   1000
 
-#define SD_CS_PIN                               GPIO_PIN_12        /* PA.04*/
+#define SD_CS_PIN                               GPIO_PIN_11        /* PB.11*/
 #define SD_CS_GPIO_PORT                         GPIOB
 #define SD_CS_GPIO_CLK_ENABLE()                 __HAL_RCC_GPIOB_CLK_ENABLE()
 #define SD_CS_GPIO_CLK_DISABLE()                __HAL_RCC_GPIOB_CLK_DISABLE()
@@ -75,7 +64,6 @@
 
 typedef enum
 {
-
   SD_RESPONSE_NO_ERROR      = (0x00),
   SD_IN_IDLE_STATE          = (0x01),
   SD_ERASE_RESET            = (0x02),

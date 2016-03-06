@@ -60,15 +60,15 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi)
 		GPIO_PIN_5 | GPIO_PIN_7,
 		GPIO_MODE_AF_PP,
 		GPIO_NOPULL,
-		GPIO_SPEED_FREQ_MEDIUM
+		GPIO_SPEED_FREQ_HIGH
 	};
 
 	GPIO_InitTypeDef gpio_miso = 
 	{
 		GPIO_PIN_6,
-		GPIO_MODE_INPUT,
+		GPIO_MODE_AF_INPUT,
 		GPIO_PULLDOWN,
-		GPIO_SPEED_FREQ_MEDIUM
+		GPIO_SPEED_FREQ_HIGH
 	};
 
 	__HAL_RCC_SPI1_CLK_ENABLE();
@@ -76,10 +76,17 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi)
 	HAL_GPIO_Init(GPIOA, &gpio_sck_mosi);
 	HAL_GPIO_Init(GPIOA, &gpio_miso);
 	SPI_1_DMA_init();
-	
-	/* Enabling SPI2 pins */
-	gpio_sck_mosi.Pin = GPIO_PIN_15 | GPIO_PIN_13;
-	gpio_miso.Pin = GPIO_PIN_14;
+
+	gpio_sck_mosi.Pin = GPIO_PIN_13 | GPIO_PIN_15;
+	gpio_sck_mosi.Mode = GPIO_MODE_AF_PP;
+	gpio_sck_mosi.Pull = GPIO_PULLUP;
+	gpio_sck_mosi.Speed	= GPIO_SPEED_FREQ_HIGH;
+
+ 	gpio_miso.Pin = GPIO_PIN_14;
+	gpio_miso.Mode = GPIO_MODE_AF_INPUT;
+	gpio_miso.Pull = GPIO_PULLUP;
+	gpio_miso.Speed =	GPIO_SPEED_FREQ_HIGH;
+
 	__HAL_RCC_SPI2_CLK_ENABLE();
 	__HAL_RCC_GPIOB_CLK_ENABLE();
 	HAL_GPIO_Init(GPIOB, &gpio_sck_mosi);
@@ -191,8 +198,6 @@ HAL_StatusTypeDef SPI_1_read(uint8_t *data, uint16_t bytes)
 HAL_StatusTypeDef SPI_2_init(void)
 {
 	HAL_StatusTypeDef rt;
-	SPI2->CR1 = 0;
-	memset(&spi_2_handler, 0, sizeof(SPI_HandleTypeDef));
 	SPI_handler_basic_init(&spi_2_handler, SPI2);		
 	rt = HAL_SPI_Init(&spi_2_handler);
 	if (rt)
@@ -205,7 +210,7 @@ HAL_StatusTypeDef SPI_2_write(uint8_t *data)
 	HAL_StatusTypeDef rt;
 	SPI_wait_for_EOT(&spi_2_handler);
 	rt = HAL_SPI_Transmit(&spi_2_handler, data, 1, 0xFFFF); 
-	SPI_wait_for_EOT(&spi_2_handler);
+//	SPI_wait_for_EOT(&spi_2_handler);
 	return rt;
 }
 
@@ -214,7 +219,7 @@ HAL_StatusTypeDef SPI_2_read(uint8_t *data, uint16_t bytes)
 	HAL_StatusTypeDef rt;
 	SPI_wait_for_EOT(&spi_2_handler);
 	rt = HAL_SPI_Receive(&spi_2_handler, data, bytes, 0xFFFF);
-	SPI_wait_for_EOT(&spi_2_handler);
+//	SPI_wait_for_EOT(&spi_2_handler);
 	return rt;
 }
 
