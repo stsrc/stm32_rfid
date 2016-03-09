@@ -12,6 +12,7 @@ LIBROOT=/home/konrad/Programming/eb/STM32/toolchain/firmware
 
 # Tools
 
+CPP=$(TOOLROOT)/arm-none-eabi-g++
 CC=$(TOOLROOT)/arm-none-eabi-gcc
 LD=$(TOOLROOT)/arm-none-eabi-gcc
 AR=$(TOOLROOT)/arm-none-eabi-ar
@@ -42,10 +43,14 @@ LDFLAGS+= -T$(LDSCRIPT) -mcpu=cortex-m3 -mthumb -mfloat-abi=soft
 LDFLAGS+= -D$(MTYPE) -specs=nosys.specs
 LDFLAGS+= -Wall -Wl,-gc-sections,-u,main
 CFLAGS+= -mcpu=cortex-m3 -mthumb -mfloat-abi=soft
-CFLAGS+= -O0 -g3 -Wall -std=gnu99 
+CFLAGS+= -O0 -g3 -Wall 
 CFLAGS+= -fdata-sections
 CFLAGS+= -I$(CORE)/inc -I$(STDPERIPH)/inc -I$(HAL)/Inc -I.
-CFLAGS+= -D$(PTYPE) -D$(MTYPE) 
+CFLAGS+= -D$(PTYPE) -D$(MTYPE)
+CFLAGS+= -std=gnu99
+
+
+
 # Build executable
 
 $(ELF) : $(OBJS)
@@ -55,7 +60,7 @@ $(ELF) : $(OBJS)
 
 %.o: %.c
 	$(CC) -c $(CFLAGS) $< -o $@
-	$(CC) -MM $(CFLAGS) $< > $*.d
+#	$(CC) -MM $(CFLAGS) $< > $*.d
 
 %.o: %.s
 	$(CC) -c $(CFLAGS) $< -o $@
