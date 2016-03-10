@@ -29,13 +29,14 @@ int main(void)
 	xpt2046_init();
 	delay_init();
 	SeeedRFID_init();
-
+	char test[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 0};
+	TM_ILI9341_Puts(10, 11, test, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 	while(1) {
 		delay_ms(250);
 		memset(buf, 0, sizeof(buf));
-			sprintf(buf, "Card number: %u", USART1->DR);
-			TM_ILI9341_Puts(10, 10, buf, &TM_Font_7x10, 
-					ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);	
+		SeeedRFID_WaitAndGetData();
+		TM_ILI9341_Puts(10, 10, SeeedRFID_CardNumber(), &TM_Font_7x10, 
+				ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);	
 	}
 	return 0;
 }

@@ -27,27 +27,6 @@
  * THE SOFTWARE.
  */
 
-/**************************************************************************
-* Pins
-* ====
-*
-* 1. VCC support 3.3 ~ 5V
-* 2. TX, RX connect to Arduino or Seeeduino
-* 3. T1, T2 is the Signal port for RFID antenna
-* 4. W0, W1 is for wiegand protocol, but this library not support yet.
-*
-* ```
-* 		+-----------+
-* 	----|VCC	  T1|----
-* 	----|GND	  T2|----
-* 	----|TX		 SER|----
-* 	----|RX		 LED|----
-* 	----|W0		BEEP|----
-* 	----|W1		 GND|----
-* 		+-----------+
-* ```
-***************************************************************************/
-
 #ifndef SeeedRFID_H
 #define SeeedRFID_H
 
@@ -57,6 +36,9 @@
 #define false 0
 #endif
 
+#define RFID_DATA_LEN 15
+
+#include <string.h>
 #include <stdint.h>
 #include "USART.h"
 #include "delay.h"
@@ -66,12 +48,12 @@ struct RFIDdata
 	int dataLen;
 	uint8_t chk;
 	bool valid;
-	unsigned char raw[5];
+	char raw[RFID_DATA_LEN];
+	char card_number[11];
 };
 
 void SeeedRFID_init();
-unsigned long SeeedRFID_cardNumber();
-struct RFIDdata SeeedRFID_data();
-bool SeeedRFID_isAvailable();
+char* SeeedRFID_CardNumber();
+bool SeeedRFID_WaitAndGetData();
 
 #endif //__SeeedRFID_H__

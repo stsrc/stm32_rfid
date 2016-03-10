@@ -27,27 +27,6 @@
  * THE SOFTWARE.
  */
 
-/**************************************************************************
-* Pins
-* ====
-*
-* 1. VCC support 3.3 ~ 5V
-* 2. TX, RX connect to Arduino or Seeeduino
-* 3. T1, T2 is the Signal port for RFID antenna
-* 4. W0, W1 is for wiegand protocol, but this library not support yet.
-* 
-* ```
-* 		+-----------+
-* 	----|VCC	  T1|----
-* 	----|GND	  T2|----
-* 	----|TX		 SER|----
-* 	----|RX		 LED|----	
-* 	----|W0		BEEP|----
-* 	----|W1		 GND|----
-* 		+-----------+
-* ```
-***************************************************************************/
-
 #include "SeeedRFID.h"
 
 
@@ -78,45 +57,25 @@ void SeeedRFID_init()
 	rfid._type = RFID_UART;
 }
 
-bool SeeedRFID_checkBitValidationUART()
-{
-	if( 5 == rfid._data.dataLen && (rfid._data.raw[4] == (rfid._data.raw[0]^rfid._data.raw[1]^rfid._data.raw[2]^rfid._data.raw[3])))
-	{
-		rfid._data.valid = rfid._isAvailable = true;
-		return true;
-	} else
-	{
-		rfid._data.valid = rfid._isAvailable = false;
-		return false;
-	}
-}
-
-void SeeedRFID_listen()
-{
-	USART_1_listen();
-}
-
 bool SeeedRFID_read()
 {
-
 	rfid._isAvailable = false;
 
 	if (rfid._data.dataLen != 0)
 	{
 		rfid._data.dataLen = 0;
-	}
-	SeeedRFID_listen();	
-	while (USART_1_available())
+	}	
+	memset(rfid._data.raw, 0, RFID_DATA_LEN);
+	while (rfid._data.dataLen < RFID_DATA_LEN - 1)
 	{
+		while(!USART_1_available());
 		rfid._data.raw[rfid._data.dataLen++] = USART_1_read();
-
-		delay_ms(10);
 	}
 
-	return SeeedRFID_checkBitValidationUART();
+	return false;
 }
 
-bool SeeedRFID_isAvailable()
+bool SeeedRFID_WaitAndGetData()
 {
 	switch(rfid._type){
 		case RFID_UART:
@@ -131,39 +90,10 @@ bool SeeedRFID_isAvailable()
 	}
 }
 
-struct RFIDdata SeeedRFID_data()
+char* SeeedRFID_CardNumber()
 {
-	if (rfid._data.valid)
-	{
-		return rfid._data;
-	}else{
-		// empty data
-		struct RFIDdata _tag;
-		return _tag;
-	}
+	memset(rfid._data.card_number, 0, 11);	
+	strncpy(rfid._data.card_number, &(rfid._data.raw[1]), 10);	
+	return rfid._data.raw;
 }
 
-unsigned long SeeedRFID_cardNumber()
-{
-	// unsigned long myZero = 255;
-
-	unsigned long sum = 0;
-	if(0 != rfid._data.raw[0]){
-		// _data.raw[0] = 	_data.raw[0] & myZero;
-		sum = sum + rfid._data.raw[0];
-		sum = sum<<24;
-	}
-	// _data.raw[1] = 	_data.raw[1] & myZero;
-	sum = sum + rfid._data.raw[1];
-	sum = sum<<16;
-
-	unsigned long sum2 = 0;
-	// _data.raw[2] = 	_data.raw[2] & myZero;
-	sum2 = sum2  + rfid._data.raw[2];
-	sum2 = sum2 <<8;
-	// _data.raw[3] = 	_data.raw[3] & myZero;
-	sum2 = sum2  + rfid._data.raw[3];
-
-	sum = sum + sum2;
-  return sum;
-}
