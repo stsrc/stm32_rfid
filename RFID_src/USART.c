@@ -42,10 +42,8 @@ bool USART_1_available() {
 	return USART1->SR & USART_SR_RXNE;
 }
 
-unsigned char USART_1_read() {
-	unsigned char data;
-	HAL_UART_Receive(&uart_handler, &data, 1, 0xFFFF);
-	return data;
+void USART_1_read(unsigned char* data, uint8_t len) {
+	HAL_UART_Receive(&uart_handler, data, len, 0xFFFF);
 }
 
 

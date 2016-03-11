@@ -57,6 +57,38 @@ void SeeedRFID_init()
 	rfid._type = RFID_UART;
 }
 
+static uint8_t get_hex_from_ASCII(char input) {
+	if (input == '0') return 0;
+	else if (input == '1') return 1;
+	else if (input == '2') return 2;
+	else if (input == '3') return 3;
+	else if (input == '4') return 4;
+	else if (input == '5') return 5;
+	else if (input == '6') return 6;
+	else if (input == '7') return 7;
+	else if (input == '8') return 8;
+	else if (input == '9') return 9;
+	else if (input == 'A') return 0x0A;
+	else if (input == 'B') return 0x0B;
+	else if (input == 'C') return 0x0C;
+	else if (input == 'D') return 0x0D;
+	else if (input == 'E') return 0x0E;
+	else if (input == 'F') return 0x0F;
+	else return 0;
+}
+
+static uint8_t make_byte_from_ASCII(char first, char second){
+	return get_hex_from_ASCII(first) << 4 | get_hex_from_ASCII(second);
+}
+
+static uint8_t check_CRC() {
+	uint8_t CRC_from_data = 0, CRC_from_chunk;
+	for (uint8_t i = 0; i < 5; i++)
+		CRC_from_data ^= make_byte_from_ASCII(rfid._data.raw[2 + 2*i], rfid._data.raw[2 + 2*i + 1]); 
+	CRC_from_chunk = make_byte_from_ASCII(rfid._data.raw[12], rfid._data.raw[13]);
+	return CRC_from_data == CRC_from_chunk;
+}
+
 bool SeeedRFID_read()
 {
 	rfid._isAvailable = false;
@@ -66,13 +98,10 @@ bool SeeedRFID_read()
 		rfid._data.dataLen = 0;
 	}	
 	memset(rfid._data.raw, 0, RFID_DATA_LEN);
-	while (rfid._data.dataLen < RFID_DATA_LEN - 1)
-	{
-		while(!USART_1_available());
-		rfid._data.raw[rfid._data.dataLen++] = USART_1_read();
-	}
+	while(!USART_1_available());
+	USART_1_read((unsigned char *)rfid._data.raw, RFID_DATA_LEN - 1);
 
-	return false;
+	return check_CRC();
 }
 
 bool SeeedRFID_WaitAndGetData()
@@ -93,7 +122,7 @@ bool SeeedRFID_WaitAndGetData()
 char* SeeedRFID_CardNumber()
 {
 	memset(rfid._data.card_number, 0, 11);	
-	strncpy(rfid._data.card_number, &(rfid._data.raw[1]), 10);	
-	return rfid._data.raw;
+	strncpy(rfid._data.card_number, &(rfid._data.raw[2]), 10);	
+	return rfid._data.card_number;
 }
 

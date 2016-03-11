@@ -14,6 +14,6 @@
 void USART_1_init();
 void USART_1_listen();
 bool USART_1_available();
-unsigned char USART_1_read();
+void USART_1_read(unsigned char *data, uint8_t len);
 
 #endif
