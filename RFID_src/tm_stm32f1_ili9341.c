@@ -87,14 +87,54 @@ TM_ILI931_Options_t ILI9341_Opts;
 uint8_t ILI9341_INT_CalledFromPuts = 0;
 
 /* Private functions */
-void TM_ILI9341_InitLCD(void);
-void TM_ILI9341_SendData(uint8_t data);
-void TM_ILI9341_SendCommand(uint8_t data);
-void TM_ILI9341_Delay(volatile unsigned int delay);
-void TM_ILI9341_SetCursorPosition(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
-void TM_ILI9341_INT_Fill(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_t color);
+static void TM_ILI9341_InitLCD(void);
+static void TM_ILI9341_SendData(uint8_t data);
+static void TM_ILI9341_SendCommand(uint8_t data);
+static void TM_ILI9341_Delay(volatile unsigned int delay);
+static void TM_ILI9341_SetCursorPosition(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
+static void TM_ILI9341_INT_Fill(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_t color);
 
-void TM_ILI9341_Init() {
+static TIM_HandleTypeDef htim;
+
+static void TM_ILI9341_InitTimer2()
+{
+	htim.Instance = TIM2;
+	htim.Init.CounterMode = TIM_COUNTERMODE_UP;
+	htim.Init.ClockDivision = TIM_CLOCKDIVISION_DIV4;
+	htim.Init.Prescaler = 60000;
+	htim.Init.Period = 135;
+	HAL_TIM_Base_Init(&htim);
+	HAL_TIM_Base_Start_IT(&htim);
+}
+
+void HAL_TIM_Base_MspInit(TIM_HandleTypeDef *htim) 
+{
+	if(htim->Instance == TIM2) {
+		__HAL_RCC_TIM2_CLK_ENABLE();
+		HAL_NVIC_SetPriority(TIM2_IRQn, 0, 0);
+		HAL_NVIC_EnableIRQ(TIM2_IRQn);
+	}
+}
+
+
+__IO uint8_t TIM2_cnt = 0;
+
+void TIM2_IRQHandler() 
+{
+	TIM2_cnt++;
+	if (TIM2_cnt == 1) {
+		HAL_NVIC_EnableIRQ(EXTI3_IRQn);
+	} else if (TIM2_cnt == 31) {
+		TM_ILI9341_DisplayOff();
+		TIM2_cnt = 0;
+	}
+	HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9);
+	TIM2->SR &= ~TIM_SR_UIF;
+	HAL_TIM_Base_Start_IT(&htim);
+}
+
+void TM_ILI9341_Init()
+{
 	GPIO_InitTypeDef gpio_init = 
 	{
 		ILI9341_RST_PIN  | ILI9341_WRX_PIN | ILI9341_LED_PIN, 
@@ -120,7 +160,9 @@ void TM_ILI9341_Init() {
 
 	/* Init SPI */
 	SPI_show_error(SPI_1_init());
-		
+	
+	TM_ILI9341_InitTimer2();
+
 	/* Init LCD */
 	TM_ILI9341_InitLCD();	
 
@@ -247,10 +289,12 @@ void TM_ILI9341_InitLCD(void) {
 
 void TM_ILI9341_DisplayOn(void) {
 	TM_ILI9341_SendCommand(ILI9341_DISPLAY_ON);
+	ILI9341_LED_SET;
 }
 
 void TM_ILI9341_DisplayOff(void) {
 	TM_ILI9341_SendCommand(ILI9341_DISPLAY_OFF);
+	ILI9341_LED_RESET;
 }
 
 void TM_ILI9341_SendCommand(uint8_t data) {

@@ -13,7 +13,7 @@
 #ifndef XPT2046_CS_SET
 #define XPT2046_CS_SET		HAL_GPIO_WritePin(XPT2046_CS_PORT, XPT2046_CS_PIN, GPIO_PIN_SET)
 #define XPT2046_CS_RESET	HAL_GPIO_WritePin(XPT2046_CS_PORT, XPT2046_CS_PIN, GPIO_PIN_RESET)
-#endif /* XPT2046_CS_SET */ 
+#endif /* PT2046_CS_SET */ 
 
 struct cmd_input {
 	uint8_t START;
@@ -25,6 +25,13 @@ struct cmd_input {
 	uint8_t PID1;
 	uint8_t PID0;
 };
+
+void EXTI3_IRQHandler(){
+	TIM2_cnt = 0;
+	TM_ILI9341_DisplayOn();
+	HAL_NVIC_DisableIRQ(EXTI3_IRQn);
+	EXTI->PR |= EXTI_PR_PR3;
+}
 
 static uint8_t touch_generate_command(struct cmd_input *in)
 {
@@ -66,10 +73,12 @@ static inline void xpt2046_transmit(uint8_t *cmd, uint8_t *rx, uint16_t bytes)
 {
 	uint32_t old_speed, new_speed = SPI_BAUDRATEPRESCALER_64;
 	SPI_1_change_speed(&old_speed, new_speed);
+	HAL_NVIC_DisableIRQ(EXTI3_IRQn);
 	XPT2046_CS_RESET;	
 	SPI_1_send(cmd);
 	SPI_1_read(rx, bytes);
 	XPT2046_CS_SET;
+	HAL_NVIC_EnableIRQ(EXTI3_IRQn);
 	SPI_1_change_speed(NULL, old_speed);	
 }
 
@@ -92,9 +101,21 @@ void xpt2046_init(void)
 		GPIO_NOPULL,
 		GPIO_SPEED_FREQ_MEDIUM
 	};
+	GPIO_InitTypeDef gpio_irq = 
+	{
+		GPIO_PIN_3,
+		GPIO_MODE_IT_FALLING,
+		GPIO_NOPULL,
+		GPIO_SPEED_FREQ_HIGH
+	};	
 	uint8_t rx[3];
 	uint8_t cmd;
+	__HAL_RCC_GPIOA_CLK_ENABLE();
+	__HAL_RCC_GPIOC_CLK_ENABLE();
 	HAL_GPIO_Init(GPIOA, &gpio_cs);
+	HAL_GPIO_Init(GPIOC, &gpio_irq);
+	HAL_NVIC_SetPriority(EXTI3_IRQn, 15, 0);
+	HAL_NVIC_EnableIRQ(EXTI3_IRQn);
 	cmd = touch_generate_command(&inp);
 	xpt2046_transmit(&cmd, rx, 3);
 }

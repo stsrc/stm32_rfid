@@ -27,8 +27,8 @@ int main(void)
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9, GPIO_PIN_RESET);
 	
 	TM_ILI9341_Init();
-	xpt2046_init();
 	delay_init();
+	xpt2046_init();
 	SeeedRFID_init();
 	while(1) {
 		delay_ms(1000);

@@ -127,7 +127,9 @@ VCC          3.3V         Positive power supply
 #include <stm32f1xx.h>
 #include <stm32f1xx_hal_rcc.h>
 #include <stm32f1xx_hal_gpio.h>
+#include <stm32f1xx_hal_tim.h>
 #include "tm_stm32f1_fonts.h"
+
 #include "SPI.h"
 
 /**
