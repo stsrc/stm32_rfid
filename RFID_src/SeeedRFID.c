@@ -79,19 +79,8 @@ static uint8_t RFID_check_CRC() {
 
 uint8_t RFID_Read()
 {
-	rfid._isAvailable = 0;
-
-	if (rfid._data.dataLen != 0)
-	{
-		rfid._data.dataLen = 0;
-	}	
-	memset(rfid._data.raw, 0, RFID_DATA_LEN);
-	if (USART_1_available()) {
-		USART_1_read((unsigned char *)rfid._data.raw, RFID_DATA_LEN - 1);
-		return RFID_check_CRC();
-	} else {
-		return 0;
-	}
+	USART_1_read((unsigned char *)rfid._data.raw, RFID_DATA_LEN - 1);
+	return 0;
 }
 
 char* RFID_CardNumber()

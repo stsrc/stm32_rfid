@@ -94,43 +94,6 @@ static void TM_ILI9341_Delay(volatile unsigned int delay);
 static void TM_ILI9341_SetCursorPosition(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
 static void TM_ILI9341_INT_Fill(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_t color);
 
-static TIM_HandleTypeDef htim;
-
-static void TM_ILI9341_InitTimer2()
-{
-	htim.Instance = TIM2;
-	htim.Init.CounterMode = TIM_COUNTERMODE_UP;
-	htim.Init.ClockDivision = TIM_CLOCKDIVISION_DIV4;
-	htim.Init.Prescaler = 60000;
-	htim.Init.Period = 135;
-	HAL_TIM_Base_Init(&htim);
-	HAL_TIM_Base_Start_IT(&htim);
-}
-
-void HAL_TIM_Base_MspInit(TIM_HandleTypeDef *htim) 
-{
-	if(htim->Instance == TIM2) {
-		__HAL_RCC_TIM2_CLK_ENABLE();
-		HAL_NVIC_SetPriority(TIM2_IRQn, 0, 0);
-		HAL_NVIC_EnableIRQ(TIM2_IRQn);
-	}
-}
-
-
-__IO uint8_t TIM2_cnt = 0;
-
-void TIM2_IRQHandler() 
-{
-	TIM2_cnt++;
-	if (TIM2_cnt == 1) {
-		HAL_NVIC_EnableIRQ(EXTI3_IRQn);
-	} else if (TIM2_cnt == 31) {
-		TM_ILI9341_DisplayOff();
-		TIM2_cnt = 0;
-	}
-	TIM2->SR &= ~TIM_SR_UIF;
-}
-
 void TM_ILI9341_Init()
 {
 	GPIO_InitTypeDef gpio_init = 

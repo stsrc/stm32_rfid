@@ -27,7 +27,7 @@ struct cmd_input {
 };
 
 void EXTI3_IRQHandler(){
-	TIM2_cnt = 0;
+	RTC_cnt = 0;
 	TM_ILI9341_DisplayOn();
 	HAL_NVIC_DisableIRQ(EXTI3_IRQn);
 	EXTI->PR |= EXTI_PR_PR3;

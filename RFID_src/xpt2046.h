@@ -3,11 +3,12 @@
 #include <stm32f1xx.h>
 #include <stm32f1xx_hal_rcc.h>
 #include <stm32f1xx_hal_gpio.h>
+
 #include "SPI.h"
+#include "RTC.h"
 #include "tm_stm32f1_ili9341.h"
+
 void xpt2046_init(void);
 int xpt2046_read(uint16_t *x, uint16_t *y, uint16_t *z);
-
-extern uint8_t TIM2_cnt;
 
 #endif /* _XPT2046_H_ */

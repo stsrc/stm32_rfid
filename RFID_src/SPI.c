@@ -45,7 +45,6 @@ static HAL_StatusTypeDef SPI_1_DMA_init(void)
 	
 	spi_1_handler.hdmatx = &dma_handler;
 	
-	HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
 	HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 0, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
 	

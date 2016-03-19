@@ -1,6 +1,21 @@
 #include "USART.h"
+#include "SeeedRFID.h"
 
 static UART_HandleTypeDef uart_handler;
+__IO uint8_t USART_1_ready = 0;
+
+
+void USART1_IRQHandler(void) {
+	static uint8_t test = 0;
+	HAL_UART_IRQHandler(&uart_handler);
+	test++;
+	if (test == 14) {
+		HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9);
+		RTC_cnt = 0;
+		USART_1_ready = 1;
+		test = 0;
+	}
+}
 
 void USART_1_init() {
 	UART_InitTypeDef init;
@@ -11,10 +26,10 @@ void USART_1_init() {
 	init.Mode = UART_MODE_RX;
 	init.HwFlowCtl = UART_HWCONTROL_NONE;
 	init.OverSampling = UART_OVERSAMPLING_16;
-	
+
 	uart_handler.Init = init;
 	uart_handler.Instance = USART1;
-	
+		
 	HAL_UART_Init(&uart_handler);
 }
 
@@ -32,6 +47,8 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart) {
 	HAL_GPIO_Init(GPIOA, &init_gpio);
 	
 	__HAL_RCC_USART1_CLK_ENABLE();
+	HAL_NVIC_SetPriority(USART1_IRQn, 0, 2);
+	HAL_NVIC_EnableIRQ(USART1_IRQn);
 }
 
 void USART_1_listen() {
@@ -43,7 +60,7 @@ uint8_t USART_1_available() {
 }
 
 void USART_1_read(unsigned char* data, uint8_t len) {
-	HAL_UART_Receive(&uart_handler, data, len, 0xFFFF);
+	HAL_UART_Receive_IT(&uart_handler, data, len);
 }
 
 

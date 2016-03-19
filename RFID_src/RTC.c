@@ -1,7 +1,15 @@
 #include "RTC.h"
 
+__IO uint8_t RTC_cnt = 0;
+
 void RTC_IRQHandler() {
-	HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9);
+	RTC_cnt++;
+	if (RTC_cnt == 1) {
+		HAL_NVIC_EnableIRQ(EXTI3_IRQn);
+	} else if (RTC_cnt == 31) {
+		TM_ILI9341_DisplayOff();
+		RTC_cnt = 0;
+	}
 	RTC->CRL &= ~RTC_CRL_SECF;
 }
 

@@ -13,8 +13,6 @@
 
 int main(void)
 {
-	uint8_t CRC_test;
-	char buf[50];
 	GPIO_InitTypeDef gpio_str = 
 	{
 		GPIO_PIN_8 | GPIO_PIN_9,
@@ -27,24 +25,24 @@ int main(void)
 	HAL_GPIO_Init(GPIOC, &gpio_str);
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9, GPIO_PIN_RESET);
 	
+	HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_0);
+
 	TM_ILI9341_Init();
 	delay_init();
 	xpt2046_init();
 	RFID_Init();
 	RTC_Init();
+
+	RFID_Read();
+	
 	while(1) {
-		delay_ms(1000);
-		memset(buf, 0, sizeof(buf));
-		TM_ILI9341_Fill(ILI9341_COLOR_BLACK);
-		CRC_test = RFID_Read();
-		TM_ILI9341_Puts(10, 10, RFID_CardNumber(), &TM_Font_7x10, 
-				ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);	
-		if (CRC_test)
-			TM_ILI9341_Puts(10, 30, "CRCs are equal!\0", &TM_Font_7x10, 
-				ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
-		else
-			TM_ILI9341_Puts(10, 10, "CRCs are NOT equal!\0", &TM_Font_7x10, 
+		if(USART_1_ready) {
+			USART_1_ready = 0;
+			TM_ILI9341_Fill(ILI9341_COLOR_BLACK);
+			TM_ILI9341_Puts(10, 10, RFID_CardNumber(), &TM_Font_7x10, 
 					ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);	
+			RFID_Read();
+		}	
 	}
 	return 0;
 }
