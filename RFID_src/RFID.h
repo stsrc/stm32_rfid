@@ -47,16 +47,12 @@
 
 #include <string.h>
 #include <stdint.h>
-#include "USART.h"
+#include "UART.h"
 #include "delay.h"
 
 struct RFIDdata
 {
-	int dataLen;
-	uint8_t chk;
-	uint8_t valid;
 	char raw[RFID_DATA_LEN];
-	char card_number[11];
 };
 
 void RFID_Init();

@@ -1,8 +1,8 @@
-#include "USART.h"
-#include "SeeedRFID.h"
+#include "UART.h"
+#include "RFID.h"
 
 static UART_HandleTypeDef uart_handler;
-__IO uint8_t USART_1_ready = 0;
+__IO uint8_t UART_1_ready = 0;
 
 
 void USART1_IRQHandler(void) {
@@ -12,12 +12,12 @@ void USART1_IRQHandler(void) {
 	if (test == 14) {
 		HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9);
 		RTC_cnt = 0;
-		USART_1_ready = 1;
+		UART_1_ready = 1;
 		test = 0;
 	}
 }
 
-void USART_1_init() {
+void UART_1_init() {
 	UART_InitTypeDef init;
 	init.BaudRate = 9600;
 	init.WordLength = UART_WORDLENGTH_8B;
@@ -51,15 +51,15 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart) {
 	HAL_NVIC_EnableIRQ(USART1_IRQn);
 }
 
-void USART_1_listen() {
+void UART_1_listen() {
  while(!(USART1->SR & USART_SR_RXNE));
 }
 
-uint8_t USART_1_available() {
+uint8_t UART_1_available() {
 	return USART1->SR & USART_SR_RXNE;
 }
 
-void USART_1_read(unsigned char* data, uint8_t len) {
+void UART_1_read(unsigned char* data, uint8_t len) {
 	HAL_UART_Receive_IT(&uart_handler, data, len);
 }
 

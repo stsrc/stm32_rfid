@@ -1,6 +1,4 @@
 /*    
- * SeeedRFID.cpp
- * A library for RFID moudle.
  *   
  * Copyright (c) 2008-2014 seeed technology inc.  
  * Author      : Ye Xiaobo(yexiaobo@seeedstudio.com)
@@ -27,20 +25,19 @@
  * THE SOFTWARE.
  */
 
-#include "SeeedRFID.h"
+#include "RFID.h"
 
 
 struct SeeedRFID
 {
 	struct RFIDdata _data;
-	uint8_t _isAvailable;
 };
 
 static struct SeeedRFID rfid;
 
 void RFID_Init()
 {
-	USART_1_init();
+	UART_1_init();
 	// init RFID data
 	memset(&rfid, 0, sizeof(struct SeeedRFID));
 }
@@ -79,14 +76,12 @@ static uint8_t RFID_check_CRC() {
 
 uint8_t RFID_Read()
 {
-	USART_1_read((unsigned char *)rfid._data.raw, RFID_DATA_LEN - 1);
+	UART_1_read((unsigned char *)rfid._data.raw, RFID_DATA_LEN - 1);
 	return 0;
 }
 
 char* RFID_CardNumber()
 {
-	memset(rfid._data.card_number, 0, 11);	
-	strncpy(rfid._data.card_number, &(rfid._data.raw[2]), 10);	
-	return rfid._data.card_number;
+	return &rfid._data.raw[2];
 }
 

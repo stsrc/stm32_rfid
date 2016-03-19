@@ -7,7 +7,7 @@
 #include "xpt2046.h"
 #include "FatFs/ff.h"
 #include "FatFs/sd_diskio.h"
-#include "SeeedRFID.h"
+#include "RFID.h"
 #include "RTC.h"
 #include "delay.h"
 
@@ -36,8 +36,8 @@ int main(void)
 	RFID_Read();
 	
 	while(1) {
-		if(USART_1_ready) {
-			USART_1_ready = 0;
+		if(UART_1_ready) {
+			UART_1_ready = 0;
 			TM_ILI9341_Fill(ILI9341_COLOR_BLACK);
 			TM_ILI9341_Puts(10, 10, RFID_CardNumber(), &TM_Font_7x10, 
 					ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);	
