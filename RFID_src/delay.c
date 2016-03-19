@@ -7,13 +7,12 @@ void delay_init(){
 	}
 }
 
-void delay_ms(uint32_t value){	//unit of value = [ms]
+void delay_ms(uint32_t value){
 	delay_val = value*100;
 	while(delay_val != 0);
 }
 
-/*Cannot get less than 10us because of SystemCoreClock?*/
-void delay_us(uint32_t value){	/*multiply value (i.e. value*10us)*/
+void delay_us(uint32_t value){
 	delay_val = value;
 	while(delay_val != 0);
 }

@@ -25,7 +25,7 @@ int main(void)
 	HAL_GPIO_Init(GPIOC, &gpio_str);
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9, GPIO_PIN_RESET);
 	
-	HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_0);
+	HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
 
 	TM_ILI9341_Init();
 	delay_init();
@@ -38,7 +38,6 @@ int main(void)
 	while(1) {
 		if(UART_1_ready) {
 			UART_1_ready = 0;
-			TM_ILI9341_Fill(ILI9341_COLOR_BLACK);
 			TM_ILI9341_Puts(10, 10, RFID_CardNumber(), &TM_Font_7x10, 
 					ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);	
 			RFID_Read();

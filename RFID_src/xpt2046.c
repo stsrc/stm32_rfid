@@ -114,7 +114,7 @@ void xpt2046_init(void)
 	__HAL_RCC_GPIOC_CLK_ENABLE();
 	HAL_GPIO_Init(GPIOA, &gpio_cs);
 	HAL_GPIO_Init(GPIOC, &gpio_irq);
-	HAL_NVIC_SetPriority(EXTI3_IRQn, 15, 0);
+	HAL_NVIC_SetPriority(EXTI3_IRQn, 3, 0);
 	HAL_NVIC_EnableIRQ(EXTI3_IRQn);
 	cmd = touch_generate_command(&inp);
 	xpt2046_transmit(&cmd, rx, 3);

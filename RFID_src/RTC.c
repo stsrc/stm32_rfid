@@ -50,7 +50,7 @@ HAL_StatusTypeDef RTC_Init()
 	RTC->CRL &= ~RTC_CRL_CNF;
 	/* Waiting for end of write operation */
 	while(!(RTC->CRL & RTC_CRL_RTOFF));
-	HAL_NVIC_SetPriority(RTC_IRQn, 0, 5); 
+	HAL_NVIC_SetPriority(RTC_IRQn, 2, 0); 
 	HAL_NVIC_EnableIRQ(RTC_IRQn);
 	return HAL_OK;
 }

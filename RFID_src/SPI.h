@@ -10,7 +10,6 @@
 #include <stm32f1xx_hal_cortex.h>
 
 void SPI_show_error(HAL_StatusTypeDef rt);
-void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi);
 
 HAL_StatusTypeDef SPI_1_init();
 HAL_StatusTypeDef SPI_1_send(uint8_t *data);
