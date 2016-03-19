@@ -38,7 +38,7 @@ void USART_1_listen() {
  while(!(USART1->SR & USART_SR_RXNE));
 }
 
-bool USART_1_available() {
+uint8_t USART_1_available() {
 	return USART1->SR & USART_SR_RXNE;
 }
 

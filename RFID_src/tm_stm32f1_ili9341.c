@@ -128,9 +128,7 @@ void TIM2_IRQHandler()
 		TM_ILI9341_DisplayOff();
 		TIM2_cnt = 0;
 	}
-	HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9);
 	TIM2->SR &= ~TIM_SR_UIF;
-	HAL_TIM_Base_Start_IT(&htim);
 }
 
 void TM_ILI9341_Init()
@@ -160,8 +158,6 @@ void TM_ILI9341_Init()
 
 	/* Init SPI */
 	SPI_show_error(SPI_1_init());
-	
-	TM_ILI9341_InitTimer2();
 
 	/* Init LCD */
 	TM_ILI9341_InitLCD();	

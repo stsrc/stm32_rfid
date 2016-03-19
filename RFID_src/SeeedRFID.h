@@ -27,14 +27,21 @@
  * THE SOFTWARE.
  */
 
+/*
+ * RFID data format:
+ *
+ * 1st and 2nd byte - control bytes.
+ * 
+ * from 3rd to 13th byte - card ID number. Each byte contains ASCII sign, which 
+ * may be a single digit or letter from A to F (each sign belongs to hexadecimal
+ * system). Therefore those 10 bytes makes value written in hex.
+ *
+ * last 2 bytes - CRC bytes.
+ *
+ */
+
 #ifndef SeeedRFID_H
 #define SeeedRFID_H
-
-#ifndef bool
-#define bool uint8_t
-#define true 1
-#define false 0
-#endif
 
 #define RFID_DATA_LEN 15
 
@@ -47,13 +54,13 @@ struct RFIDdata
 {
 	int dataLen;
 	uint8_t chk;
-	bool valid;
+	uint8_t valid;
 	char raw[RFID_DATA_LEN];
 	char card_number[11];
 };
 
-void SeeedRFID_init();
-char* SeeedRFID_CardNumber();
-bool SeeedRFID_WaitAndGetData();
+void RFID_Init();
+char* RFID_CardNumber();
+uint8_t RFID_Read();
 
 #endif //__SeeedRFID_H__
