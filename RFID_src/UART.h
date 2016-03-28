@@ -9,10 +9,12 @@
 #include "RTC.h"
 #include "tm_stm32f1_ili9341.h"
 
-void UART_1_init();
-void UART_1_listen();
-uint8_t UART_1_available();
+HAL_StatusTypeDef UART_1_init();
+HAL_StatusTypeDef UART_2_init();
+
 HAL_StatusTypeDef UART_1_read(unsigned char *data, uint8_t len);
+HAL_StatusTypeDef UART_2_transmit(uint8_t *data, uint8_t size);
+HAL_StatusTypeDef UART_2_receive(uint8_t *data, uint8_t size);
 
 extern __IO uint8_t UART_1_ready_flag;
 extern __IO uint8_t UART_1_error_flag;

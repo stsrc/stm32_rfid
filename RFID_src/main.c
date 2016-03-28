@@ -10,6 +10,7 @@
 #include "RFID.h"
 #include "RTC.h"
 #include "delay.h"
+#include "esp8266.h"
 
 void set_leds()
 {
@@ -59,7 +60,7 @@ int main(void)
 	RTC_Init();
 
 	RFID_Read();
-	
+	UART_2_init();	
 	while(1) {
 		if(UART_1_ready_flag) {
 			UART_1_ready_flag = 0;
@@ -72,6 +73,10 @@ int main(void)
 		} else if (RTC_second_flag) {
 			RTC_second_flag = 0;
 			print_time();
+			UART_2_transmit(&c, 1);
+			UART_2_receive(&test, 1);
+			TM_ILI9341_Putc(10, 30, (char)test, &TM_Font_7x10, 
+					ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 		}
 	}
 	return 0;
