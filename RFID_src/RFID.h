@@ -43,7 +43,7 @@
 #ifndef SeeedRFID_H
 #define SeeedRFID_H
 
-#define RFID_DATA_LEN 15
+#define RFID_DATA_LEN 14
 
 #include <string.h>
 #include <stdint.h>

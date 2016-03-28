@@ -1,7 +1,6 @@
 #include "SPI.h"
 
 static SPI_HandleTypeDef spi_1_handler, spi_2_handler;
-static DMA_InitTypeDef dma_init;
 static DMA_HandleTypeDef dma_handler;
 
 void SPI_show_error(HAL_StatusTypeDef rt)
@@ -20,6 +19,7 @@ void DMA1_Channel3_IRQHandler(void)
 static HAL_StatusTypeDef SPI_1_DMA_init(void)
 {
 	HAL_StatusTypeDef rt;
+	DMA_InitTypeDef dma_init;
 	memset(&dma_init, 0, sizeof(DMA_InitTypeDef));
 	memset(&dma_handler, 0, sizeof(DMA_HandleTypeDef));
 
@@ -45,7 +45,6 @@ static HAL_StatusTypeDef SPI_1_DMA_init(void)
 	
 	spi_1_handler.hdmatx = &dma_handler;
 	
-	HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 0, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
 	
 	return HAL_OK;

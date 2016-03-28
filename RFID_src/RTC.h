@@ -8,7 +8,8 @@
 
 #include "tm_stm32f1_ili9341.h"
 
-extern __IO uint8_t RTC_cnt;
-HAL_StatusTypeDef RTC_Init();
+extern __IO uint8_t RTC_second_flag;
 
+HAL_StatusTypeDef RTC_Init();
+void RTC_get_time(uint8_t *hour, uint8_t *min, uint8_t *sec);
 #endif

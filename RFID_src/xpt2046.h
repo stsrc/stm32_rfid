@@ -8,6 +8,8 @@
 #include "RTC.h"
 #include "tm_stm32f1_ili9341.h"
 
+extern __IO uint8_t xpt2046_irq_flag;
+
 void xpt2046_init(void);
 int xpt2046_read(uint16_t *x, uint16_t *y, uint16_t *z);
 

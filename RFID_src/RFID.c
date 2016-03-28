@@ -76,15 +76,14 @@ static uint8_t RFID_check_CRC() {
 
 uint8_t RFID_Read()
 {
-	UART_1_read((unsigned char *)rfid._data.raw, RFID_DATA_LEN - 1);
+	UART_1_read((unsigned char *)rfid._data.raw, RFID_DATA_LEN);
 	return 0;
 }
 
 char* RFID_CardNumber()
 {
-	//TODO: WHAT ABOUT SYNCHRO?? SEMAPHORES ETC?
 	if (RFID_check_CRC()) { 
-		rfid._data.raw[13] = 0;
+		rfid._data.raw[12] = '\0';
 		return &rfid._data.raw[2];
 	}
 	else 

@@ -12,7 +12,8 @@
 void UART_1_init();
 void UART_1_listen();
 uint8_t UART_1_available();
-void UART_1_read(unsigned char *data, uint8_t len);
+HAL_StatusTypeDef UART_1_read(unsigned char *data, uint8_t len);
 
-extern __IO uint8_t UART_1_ready;
+extern __IO uint8_t UART_1_ready_flag;
+extern __IO uint8_t UART_1_error_flag;
 #endif

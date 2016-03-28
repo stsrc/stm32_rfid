@@ -1,16 +1,25 @@
 #include "RTC.h"
 
-__IO uint8_t RTC_cnt = 0;
+__IO uint8_t RTC_second_flag = 0;
 
 void RTC_IRQHandler() {
-	RTC_cnt++;
-	if (RTC_cnt == 1) {
-		HAL_NVIC_EnableIRQ(EXTI3_IRQn);
-	} else if (RTC_cnt == 31) {
-		TM_ILI9341_DisplayOff();
-		RTC_cnt = 0;
-	}
+	RTC_second_flag = 1;
 	RTC->CRL &= ~RTC_CRL_SECF;
+}
+
+static void RTC_set_time(uint8_t hour, uint8_t min, uint8_t sec) {
+	uint32_t temp = hour * 3600 + min * 60 + sec;
+	RTC->CNTH = (uint16_t)(temp >> 16);
+	RTC->CNTL = (uint16_t)(temp);
+}
+
+void RTC_get_time(uint8_t *hour, uint8_t *min, uint8_t *sec) {
+	uint32_t temp = RTC->CNTH + RTC->CNTL;
+	*hour = temp / 3600;
+	temp = temp - 3600 * *hour;
+	*min = temp / 60;
+	temp = temp - 60 * *min;
+	*sec = temp;
 }
 
 HAL_StatusTypeDef RTC_Init()
@@ -46,11 +55,12 @@ HAL_StatusTypeDef RTC_Init()
 	/* RTC prescaler reload value low */
 	RTC->PRLL = 0x7FFF;
 	
+	RTC_set_time(11, 11, 11);
+
 	/* Leaving configuration mode */
 	RTC->CRL &= ~RTC_CRL_CNF;
 	/* Waiting for end of write operation */
-	while(!(RTC->CRL & RTC_CRL_RTOFF));
-	HAL_NVIC_SetPriority(RTC_IRQn, 2, 0); 
+	while(!(RTC->CRL & RTC_CRL_RTOFF)); 
 	HAL_NVIC_EnableIRQ(RTC_IRQn);
 	return HAL_OK;
 }

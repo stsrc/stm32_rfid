@@ -2,26 +2,19 @@
 #include "RFID.h"
 
 static UART_HandleTypeDef uart_handler;
-__IO uint8_t UART_1_ready = 0;
-
+__IO uint8_t UART_1_ready_flag = 0;
+__IO uint8_t UART_1_error_flag = 0;
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-	/*
-	 * Disabling IRQ because we don't need right now sense touchpad.
-	 * On next RTC interrupt IRQ will be enabled
-	 */
-	HAL_NVIC_DisableIRQ(EXTI3_IRQn);
-	/*
-	 * Resetting RTC_cnt because each RFID detection causes screen to
-	 * light up.
-	 */	
-	RTC_cnt = 0;
-	/* UART_1_ready - flag for main.c */
-	UART_1_ready = 1;
-	/* Turn display on */
-	TM_ILI9341_DisplayOn();
+	if (huart->Instance == USART1)
+		UART_1_ready_flag = 1;
 }
 
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) 
+{
+	if (huart->Instance == USART1)
+		UART_1_error_flag = 1;	
+}
 
 void USART1_IRQHandler(void) {
 	HAL_UART_IRQHandler(&uart_handler);
@@ -57,7 +50,6 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart) {
 	HAL_GPIO_Init(GPIOA, &init_gpio);
 	
 	__HAL_RCC_USART1_CLK_ENABLE();
-	HAL_NVIC_SetPriority(USART1_IRQn, 1, 0);
 	HAL_NVIC_EnableIRQ(USART1_IRQn);
 }
 
@@ -69,8 +61,8 @@ uint8_t UART_1_available() {
 	return USART1->SR & USART_SR_RXNE;
 }
 
-void UART_1_read(unsigned char* data, uint8_t len) {
-	HAL_UART_Receive_IT(&uart_handler, data, len);
+HAL_StatusTypeDef UART_1_read(unsigned char* data, uint8_t len) {
+	return HAL_UART_Receive_IT(&uart_handler, data, len);
 }
 
 
