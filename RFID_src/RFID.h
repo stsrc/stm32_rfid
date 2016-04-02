@@ -43,20 +43,15 @@
 #ifndef SeeedRFID_H
 #define SeeedRFID_H
 
-#define RFID_DATA_LEN 14
+#define RFID_DATA_SIZE 14
 
 #include <string.h>
 #include <stdint.h>
 #include "UART.h"
 #include "delay.h"
 
-struct RFIDdata
-{
-	char raw[RFID_DATA_LEN];
-};
-
 void RFID_Init();
-char* RFID_CardNumber();
+uint8_t RFID_CardNumber(char* const buf);
 uint8_t RFID_Read();
 
 #endif //__SeeedRFID_H__

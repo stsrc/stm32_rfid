@@ -47,15 +47,6 @@
 @verbatim
 ILI9341      STM32F4xx    DESCRIPTION
 		
-SDO (MISO    PF8          Output from LCD for SPI.	Not used, can be left
-LED          3.3V         Backlight
-SCK          PF7          SPI clock
-SDI (MOSI)   PF9          SPI master output
-WRX or D/C   PD13         Data/Command register
-RESET        PD12         Reset LCD
-CS           PC2          Chip select for SPI
-GND          GND          Ground
-VCC          3.3V         Positive power supply
 @endverbatim
  *		
  * All pins can be changed in your defines.h file

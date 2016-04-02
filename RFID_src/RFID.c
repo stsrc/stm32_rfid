@@ -28,18 +28,13 @@
 #include "RFID.h"
 
 
-struct SeeedRFID
-{
-	struct RFIDdata _data;
-};
-
-static struct SeeedRFID rfid;
+static char data[RFID_DATA_SIZE];
 
 void RFID_Init()
 {
 	UART_1_init();
 	// init RFID data
-	memset(&rfid, 0, sizeof(struct SeeedRFID));
+	memset(data, 0, RFID_DATA_SIZE);
 }
 
 static uint8_t get_hex_from_ASCII(char input) {
@@ -69,24 +64,27 @@ static uint8_t make_byte_from_ASCII(char first, char second){
 static uint8_t RFID_check_CRC() {
 	uint8_t CRC_from_data = 0, CRC_from_chunk;
 	for (uint8_t i = 0; i < 5; i++)
-		CRC_from_data ^= make_byte_from_ASCII(rfid._data.raw[2 + 2*i], rfid._data.raw[2 + 2*i + 1]); 
-	CRC_from_chunk = make_byte_from_ASCII(rfid._data.raw[12], rfid._data.raw[13]);
+		CRC_from_data ^= make_byte_from_ASCII(data[2 + 2*i], data[2 + 2*i + 1]); 
+	CRC_from_chunk = make_byte_from_ASCII(data[12], data[13]);
 	return CRC_from_data == CRC_from_chunk;
 }
 
 uint8_t RFID_Read()
 {
-	UART_1_read((unsigned char *)rfid._data.raw, RFID_DATA_LEN);
+	UART_1_read((uint8_t *)data, RFID_DATA_SIZE);
 	return 0;
 }
 
-char* RFID_CardNumber()
-{
-	if (RFID_check_CRC()) { 
-		rfid._data.raw[12] = '\0';
-		return &rfid._data.raw[2];
+uint8_t RFID_CardNumber(char* const buf)
+{	
+	uint8_t ret;
+	UART_1_set_irq(0);
+	ret = RFID_check_CRC();
+	if (ret) { 
+		data[12] = '\0';
+		strcpy(buf, &data[2]);
 	}
-	else 
-		return NULL;
+	UART_1_set_irq(1);
+	return !ret;
 }
 

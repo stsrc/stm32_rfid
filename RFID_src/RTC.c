@@ -14,12 +14,10 @@ static void RTC_set_time(uint8_t hour, uint8_t min, uint8_t sec) {
 }
 
 void RTC_get_time(uint8_t *hour, uint8_t *min, uint8_t *sec) {
-	uint32_t temp = RTC->CNTH + RTC->CNTL;
-	*hour = temp / 3600;
-	temp = temp - 3600 * *hour;
-	*min = temp / 60;
-	temp = temp - 60 * *min;
-	*sec = temp;
+	uint32_t temp = (RTC->CNTH << 16) | RTC->CNTL;
+	*hour = (temp / 3600) % 24;
+	*min = temp / 60 % 60;
+	*sec = temp % 60;
 }
 
 HAL_StatusTypeDef RTC_Init()
@@ -55,7 +53,7 @@ HAL_StatusTypeDef RTC_Init()
 	/* RTC prescaler reload value low */
 	RTC->PRLL = 0x7FFF;
 	
-	RTC_set_time(11, 11, 11);
+	RTC_set_time(23, 59, 50);
 
 	/* Leaving configuration mode */
 	RTC->CRL &= ~RTC_CRL_CNF;

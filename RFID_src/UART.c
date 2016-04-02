@@ -1,29 +1,33 @@
 #include "UART.h"
-#include "RFID.h"
 
 static UART_HandleTypeDef uart_1_handler, uart_2_handler;
-__IO uint8_t UART_1_ready_flag = 0;
-__IO uint8_t UART_1_error_flag = 0;
+__IO uint8_t UART_1_flag = 0;
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) 
+{
 	if (huart->Instance == USART1)
-		UART_1_ready_flag = 1;
+		SET_BIT(UART_1_flag, ready_bit);
 }
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) 
 {
 	if (huart->Instance == USART1)
-		UART_1_error_flag = 1;	
+		SET_BIT(UART_1_flag, error_bit);	
 }
 
 void USART1_IRQHandler(void) 
 {
 	HAL_UART_IRQHandler(&uart_1_handler);
+	RFID_Read();
 }
 
-HAL_StatusTypeDef UART_1_init() {
+HAL_StatusTypeDef UART_1_init() 
+{
+	HAL_StatusTypeDef ret;
 	UART_InitTypeDef init;
-	init.BaudRate = 9600;
+	init.BaudRate = 115200;
+	//init.BaudRate = 57600;
+	//init.BaudRate = 9600;
 	init.WordLength = UART_WORDLENGTH_8B;
 	init.StopBits = UART_STOPBITS_1;
 	init.Parity = UART_PARITY_NONE;
@@ -34,10 +38,14 @@ HAL_StatusTypeDef UART_1_init() {
 	uart_1_handler.Init = init;
 	uart_1_handler.Instance = USART1;
 		
-	return HAL_UART_Init(&uart_1_handler);
+	ret = HAL_UART_Init(&uart_1_handler);
+	if (ret == HAL_OK)
+		RFID_Read();
+	return ret;
 }
 
-void HAL_UART_MspInit(UART_HandleTypeDef *huart) {
+void HAL_UART_MspInit(UART_HandleTypeDef *huart) 
+{
 	GPIO_InitTypeDef init_gpio;
 	if (huart->Instance == USART1) init_gpio.Pin = GPIO_PIN_9;
 	else if (huart->Instance == USART2) init_gpio.Pin = GPIO_PIN_2;
@@ -61,19 +69,21 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart) {
 	}
 }
 
-HAL_StatusTypeDef UART_1_read(unsigned char* data, uint8_t len) {
-	return HAL_UART_Receive_IT(&uart_1_handler, data, len);
+HAL_StatusTypeDef UART_1_read(uint8_t* data, uint8_t size) 
+{
+	return HAL_UART_Receive_IT(&uart_1_handler, data, size);
 }
 
-HAL_StatusTypeDef UART_2_init() {
+HAL_StatusTypeDef UART_2_init() 
+{
 	HAL_StatusTypeDef ret;
 	UART_InitTypeDef init;
-	init.BaudRate = 115200;
+	init.BaudRate = 9600;
 	init.WordLength = UART_WORDLENGTH_8B;
 	init.StopBits = UART_STOPBITS_1;
 	init.Parity = UART_PARITY_NONE;
 	init.Mode = UART_MODE_TX_RX;
-	init.HwFlowCtl = UART_HWCONTROL_NONE; //maybe use hw control?
+	init.HwFlowCtl = UART_HWCONTROL_NONE;
 	init.OverSampling = UART_OVERSAMPLING_16;
 
 	uart_2_handler.Init = init;
@@ -82,18 +92,27 @@ HAL_StatusTypeDef UART_2_init() {
 	if (ret)
 		return ret;
 	/* Interrupt enable */
-	USART2->CR1 |= USART_CR1_PEIE;
+//	USART2->CR1 |= USART_CR1_PEIE;
 	/* Interrupt on data reception */
-	USART2->CR1 |= USART_CR1_RXNEIE;	
+//	USART2->CR1 |= USART_CR1_RXNEIE;	
 	return HAL_OK;
 }
 
-HAL_StatusTypeDef UART_2_transmit(uint8_t* data, uint8_t size) {
-	return HAL_UART_Transmit(&uart_2_handler, data, size, 0xFFFF);
+HAL_StatusTypeDef UART_2_transmit(uint8_t* data, uint16_t size) 
+{
+	return HAL_UART_Transmit(&uart_2_handler, data, size, 0x0FFF);
 }
 
-HAL_StatusTypeDef UART_2_receive(uint8_t* data, uint8_t size) {
-	return HAL_UART_Receive(&uart_2_handler, data, size, 0xFFFF);
+HAL_StatusTypeDef UART_2_receive(uint8_t* data, uint16_t size) 
+{
+	return HAL_UART_Receive(&uart_2_handler, data, size, 0x0FFF);
 }
 
-
+void UART_1_set_irq(uint8_t set) 
+{
+	if (!set)
+		USART1->CR1 &= ~USART_CR1_RXNEIE;
+	else
+		USART1->CR1 |= USART_CR1_RXNEIE;
+		
+}

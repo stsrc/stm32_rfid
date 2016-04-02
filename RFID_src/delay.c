@@ -1,18 +1,13 @@
 #include "delay.h"
-uint32_t __IO delay_val;
+static uint32_t __IO delay_val;
 
 void delay_init(){
-	if(SysTick_Config(SystemCoreClock / 100000UL)){
+	if(SysTick_Config(SystemCoreClock / 1000UL)){
 		while(1);
 	}
 }
 
 void delay_ms(uint32_t value){
-	delay_val = value*100;
-	while(delay_val != 0);
-}
-
-void delay_us(uint32_t value){
 	delay_val = value;
 	while(delay_val != 0);
 }

@@ -10,7 +10,6 @@
 #include "RFID.h"
 #include "RTC.h"
 #include "delay.h"
-#include "esp8266.h"
 
 void set_leds()
 {
@@ -46,10 +45,54 @@ void print_time()
 	TM_ILI9341_Puts(10, 20, buf, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 }
 
-__IO uint8_t test = 0;
+#define ESP8266_RST_PORT	GPIOA
+#define ESP8266_RST_PIN		GPIO_PIN_4
+
+#define ESP8266_FW_PORT		GPIOA
+#define ESP8266_FW_PIN		GPIO_PIN_8
+
+void esp8266_InitPins() 
+{
+	GPIO_InitTypeDef init;
+	init.Mode = GPIO_MODE_OUTPUT_PP;
+	init.Pull = GPIO_NOPULL;
+	init.Speed = GPIO_SPEED_FREQ_HIGH;
+	init.Pin = ESP8266_RST_PIN | ESP8266_FW_PIN;
+	__HAL_RCC_GPIOA_CLK_ENABLE();
+	HAL_GPIO_Init(ESP8266_RST_PORT, &init);
+	HAL_GPIO_WritePin(ESP8266_FW_PORT, ESP8266_FW_PIN, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(ESP8266_RST_PORT, ESP8266_RST_PIN, GPIO_PIN_SET);
+}
+
+void esp8266_HardReset() {
+	HAL_GPIO_WritePin(ESP8266_RST_PORT, ESP8266_RST_PIN, GPIO_PIN_RESET);
+	delay_ms(25);
+	HAL_GPIO_WritePin(ESP8266_RST_PORT, ESP8266_RST_PIN, GPIO_PIN_SET);
+	delay_ms(25);	
+}
+
+void esp8266_Init() 
+{
+	esp8266_InitPins();
+	UART_2_init();
+	esp8266_HardReset();
+}
+
+void esp8266_test() 
+{
+	char buf[20];
+	const char *data = "AT+GMR\r\n\0";
+	memset(buf, 0, sizeof(buf));
+	UART_2_init();
+	UART_2_transmit((uint8_t *)data, strlen(data));	
+	while(!(USART2->SR & USART_SR_RXNE));
+	UART_2_receive((uint8_t *)buf, 12);
+	TM_ILI9341_Puts(10, 50, buf, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
+}
 
 int main(void)
 {
+	char buf[11];
 	set_interrupts();
 	set_leds();
 
@@ -58,25 +101,21 @@ int main(void)
 	xpt2046_init();
 	RFID_Init();
 	RTC_Init();
-
+	esp8266_Init();
+	esp8266_test();
 	RFID_Read();
-	UART_2_init();	
+
 	while(1) {
-		if(UART_1_ready_flag) {
-			UART_1_ready_flag = 0;
-			TM_ILI9341_Puts(10, 10, RFID_CardNumber(), &TM_Font_7x10, 
-					ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);	
-			RFID_Read();
-		} else if (UART_1_error_flag) {
-			UART_1_error_flag = 0;
-			RFID_Read();
+		if(READ_BIT(UART_1_flag, ready_bit)) {
+			CLEAR_BIT(UART_1_flag, ready_bit);
+			RFID_CardNumber(buf);
+			TM_ILI9341_Puts(10, 10, buf, &TM_Font_7x10, 
+					ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
+		} else if (READ_BIT(UART_1_flag, error_bit)) {
+			CLEAR_BIT(UART_1_flag, error_bit);
 		} else if (RTC_second_flag) {
 			RTC_second_flag = 0;
 			print_time();
-			UART_2_transmit(&c, 1);
-			UART_2_receive(&test, 1);
-			TM_ILI9341_Putc(10, 30, (char)test, &TM_Font_7x10, 
-					ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 		}
 	}
 	return 0;
