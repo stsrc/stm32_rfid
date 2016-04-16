@@ -1,7 +1,12 @@
 #include "UART.h"
 
 static UART_HandleTypeDef uart_1_handler, uart_2_handler;
+
 __IO uint8_t UART_1_flag = 0;
+
+struct simple_buffer UART2_transmit_buffer;
+struct simple_buffer UART2_receive_buffer;
+
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) 
 {
@@ -21,13 +26,28 @@ void USART1_IRQHandler(void)
 	RFID_Read();
 }
 
+void USART2_IRQHandler(void) 
+{
+	uint8_t data = 0;
+	int8_t ret = 0;
+	
+	if (USART2->SR & USART_SR_RXNE)
+		ret = buffer_set_byte(&UART2_receive_buffer, (uint8_t)USART2->DR);
+
+	if (USART2->SR & USART_SR_TXE) {
+		ret = buffer_get_byte(&UART2_transmit_buffer, &data);
+		if (!ret)
+			USART2->DR = data;
+		else if (ret == -ENOMEM)
+			UART_2_set_TXE_irq(0);
+	}
+}
+
 HAL_StatusTypeDef UART_1_init() 
 {
 	HAL_StatusTypeDef ret;
 	UART_InitTypeDef init;
-	init.BaudRate = 115200;
-	//init.BaudRate = 57600;
-	//init.BaudRate = 9600;
+	init.BaudRate = 9600;
 	init.WordLength = UART_WORDLENGTH_8B;
 	init.StopBits = UART_STOPBITS_1;
 	init.Parity = UART_PARITY_NONE;
@@ -78,7 +98,7 @@ HAL_StatusTypeDef UART_2_init()
 {
 	HAL_StatusTypeDef ret;
 	UART_InitTypeDef init;
-	init.BaudRate = 9600;
+	init.BaudRate = 115200;
 	init.WordLength = UART_WORDLENGTH_8B;
 	init.StopBits = UART_STOPBITS_1;
 	init.Parity = UART_PARITY_NONE;
@@ -91,21 +111,11 @@ HAL_StatusTypeDef UART_2_init()
 	ret = HAL_UART_Init(&uart_2_handler);
 	if (ret)
 		return ret;
-	/* Interrupt enable */
-//	USART2->CR1 |= USART_CR1_PEIE;
-	/* Interrupt on data reception */
-//	USART2->CR1 |= USART_CR1_RXNEIE;	
+	memset(&UART2_receive_buffer, 0, sizeof(struct simple_buffer));
+	memset(&UART2_transmit_buffer, 0, sizeof(struct simple_buffer));
+	USART2->CR1 |= USART_CR1_RXNEIE;
+	UART_2_set_TXE_irq(0);
 	return HAL_OK;
-}
-
-HAL_StatusTypeDef UART_2_transmit(uint8_t* data, uint16_t size) 
-{
-	return HAL_UART_Transmit(&uart_2_handler, data, size, 0x0FFF);
-}
-
-HAL_StatusTypeDef UART_2_receive(uint8_t* data, uint16_t size) 
-{
-	return HAL_UART_Receive(&uart_2_handler, data, size, 0x0FFF);
 }
 
 void UART_1_set_irq(uint8_t set) 
@@ -113,6 +123,12 @@ void UART_1_set_irq(uint8_t set)
 	if (!set)
 		USART1->CR1 &= ~USART_CR1_RXNEIE;
 	else
-		USART1->CR1 |= USART_CR1_RXNEIE;
-		
+		USART1->CR1 |= USART_CR1_RXNEIE;	
+}
+
+void UART_2_set_TXE_irq(uint8_t set) {
+	if (!set)
+		USART2->CR1 &= ~USART_CR1_TXEIE;
+	else 
+		USART2->CR1 |= USART_CR1_TXEIE;
 }

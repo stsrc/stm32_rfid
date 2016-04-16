@@ -14,4 +14,5 @@ void delay_ms(uint32_t value){
 
 void SysTick_Handler(void){
 	if(delay_val != 0) delay_val--;
+	HAL_IncTick();
 }

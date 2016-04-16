@@ -32,9 +32,9 @@ void set_interrupts()
 	HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 0, 0);
 	HAL_NVIC_SetPriority(EXTI3_IRQn, 2, 0);
 	HAL_NVIC_SetPriority(USART1_IRQn, 3, 0);
+	HAL_NVIC_SetPriority(USART2_IRQn, 4, 0);
 	HAL_NVIC_SetPriority(RTC_IRQn, 1, 0);
 }
-
 
 void print_time() 
 {
@@ -68,7 +68,7 @@ void esp8266_HardReset() {
 	HAL_GPIO_WritePin(ESP8266_RST_PORT, ESP8266_RST_PIN, GPIO_PIN_RESET);
 	delay_ms(25);
 	HAL_GPIO_WritePin(ESP8266_RST_PORT, ESP8266_RST_PIN, GPIO_PIN_SET);
-	delay_ms(25);	
+	delay_ms(500);	
 }
 
 void esp8266_Init() 
@@ -80,14 +80,14 @@ void esp8266_Init()
 
 void esp8266_test() 
 {
-	char buf[20];
 	const char *data = "AT+GMR\r\n\0";
-	memset(buf, 0, sizeof(buf));
-	UART_2_init();
-	UART_2_transmit((uint8_t *)data, strlen(data));	
-	while(!(USART2->SR & USART_SR_RXNE));
-	UART_2_receive((uint8_t *)buf, 12);
-	TM_ILI9341_Puts(10, 50, buf, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
+	int8_t ret;
+	memset(&UART2_transmit_buffer, 0, sizeof(struct simple_buffer));
+	memset(&UART2_receive_buffer, 0, sizeof(struct simple_buffer));
+	ret = buffer_set_text(&UART2_transmit_buffer, data);
+	UART_2_set_TXE_irq(1);
+	delay_ms(500);
+	TM_ILI9341_Puts(10, 50, UART2_receive_buffer.memory, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 }
 
 int main(void)
