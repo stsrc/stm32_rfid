@@ -11,6 +11,8 @@
 #include "RTC.h"
 #include "delay.h"
 
+#include "secret_password.h"
+
 void set_leds()
 {
 	GPIO_InitTypeDef gpio_str = 
@@ -66,7 +68,7 @@ void esp8266_InitPins()
 
 void esp8266_HardReset() {
 	HAL_GPIO_WritePin(ESP8266_RST_PORT, ESP8266_RST_PIN, GPIO_PIN_RESET);
-	delay_ms(25);
+	delay_ms(50);
 	HAL_GPIO_WritePin(ESP8266_RST_PORT, ESP8266_RST_PIN, GPIO_PIN_SET);
 	delay_ms(500);	
 }
@@ -78,15 +80,23 @@ void esp8266_Init()
 	esp8266_HardReset();
 }
 
+static inline void esp8266_send(const char *data) {
+	int8_t ret;
+	ret = buffer_set_text(&UART2_transmit_buffer, data);
+	if (ret)
+		return;
+	UART_2_set_TXE_irq(1);
+}
+
 void esp8266_test() 
 {
-	const char *data = "AT+GMR\r\n\0";
-	int8_t ret;
 	memset(&UART2_transmit_buffer, 0, sizeof(struct simple_buffer));
 	memset(&UART2_receive_buffer, 0, sizeof(struct simple_buffer));
-	ret = buffer_set_text(&UART2_transmit_buffer, data);
-	UART_2_set_TXE_irq(1);
-	delay_ms(500);
+	esp8266_send("AT+RST\r\n\0");
+	delay_ms(1000);
+	esp8266_send(WIFI_PASSWD_SECRET);
+	esp8266_send("AT+CIFSR\r\n\0");
+	delay_ms(30000);
 	TM_ILI9341_Puts(10, 50, UART2_receive_buffer.memory, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 }
 
@@ -95,14 +105,13 @@ int main(void)
 	char buf[11];
 	set_interrupts();
 	set_leds();
-
 	TM_ILI9341_Init();
 	delay_init();
 	xpt2046_init();
 	RFID_Init();
 	RTC_Init();
 	esp8266_Init();
-	esp8266_test();
+	//esp8266_test();
 	RFID_Read();
 
 	while(1) {

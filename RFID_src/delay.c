@@ -2,7 +2,8 @@
 static uint32_t __IO delay_val;
 
 void delay_init(){
-	if(SysTick_Config(SystemCoreClock / 1000UL)){
+	/* was SystemCoreClock */
+	if(SysTick_Config(8000000 / 1000UL)){
 		while(1);
 	}
 }

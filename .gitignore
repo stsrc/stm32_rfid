@@ -1,3 +1,4 @@
+secret_password.h
 libs/
 *.pyc
 ./RFID_src/.ycm_extra_conf.pyc
