@@ -10,8 +10,8 @@
 #include "RFID.h"
 #include "RTC.h"
 #include "delay.h"
+#include "esp8266.h"
 
-#include "secret_password.h"
 
 void set_leds()
 {
@@ -47,62 +47,10 @@ void print_time()
 	TM_ILI9341_Puts(10, 20, buf, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 }
 
-#define ESP8266_RST_PORT	GPIOA
-#define ESP8266_RST_PIN		GPIO_PIN_4
-
-#define ESP8266_FW_PORT		GPIOA
-#define ESP8266_FW_PIN		GPIO_PIN_8
-
-void esp8266_InitPins() 
-{
-	GPIO_InitTypeDef init;
-	init.Mode = GPIO_MODE_OUTPUT_PP;
-	init.Pull = GPIO_NOPULL;
-	init.Speed = GPIO_SPEED_FREQ_HIGH;
-	init.Pin = ESP8266_RST_PIN | ESP8266_FW_PIN;
-	__HAL_RCC_GPIOA_CLK_ENABLE();
-	HAL_GPIO_Init(ESP8266_RST_PORT, &init);
-	HAL_GPIO_WritePin(ESP8266_FW_PORT, ESP8266_FW_PIN, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(ESP8266_RST_PORT, ESP8266_RST_PIN, GPIO_PIN_SET);
-}
-
-void esp8266_HardReset() {
-	HAL_GPIO_WritePin(ESP8266_RST_PORT, ESP8266_RST_PIN, GPIO_PIN_RESET);
-	delay_ms(50);
-	HAL_GPIO_WritePin(ESP8266_RST_PORT, ESP8266_RST_PIN, GPIO_PIN_SET);
-	delay_ms(500);	
-}
-
-void esp8266_Init() 
-{
-	esp8266_InitPins();
-	UART_2_init();
-	esp8266_HardReset();
-}
-
-static inline void esp8266_send(const char *data) {
-	int8_t ret;
-	ret = buffer_set_text(&UART2_transmit_buffer, data);
-	if (ret)
-		return;
-	UART_2_set_TXE_irq(1);
-}
-
-void esp8266_test() 
-{
-	memset(&UART2_transmit_buffer, 0, sizeof(struct simple_buffer));
-	memset(&UART2_receive_buffer, 0, sizeof(struct simple_buffer));
-	esp8266_send("AT+RST\r\n\0");
-	delay_ms(1000);
-	esp8266_send(WIFI_PASSWD_SECRET);
-	esp8266_send("AT+CIFSR\r\n\0");
-	delay_ms(30000);
-	TM_ILI9341_Puts(10, 50, UART2_receive_buffer.memory, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
-}
-
 int main(void)
 {
-	char buf[11];
+	char buf[256];
+	memset(buf, 0, sizeof(buf));
 	set_interrupts();
 	set_leds();
 	TM_ILI9341_Init();
@@ -111,9 +59,9 @@ int main(void)
 	RFID_Init();
 	RTC_Init();
 	esp8266_Init();
-	//esp8266_test();
+	esp8266_GetReply("AT+GMR\r\n\0", buf);
+	TM_ILI9341_Puts(10, 50, buf, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 	RFID_Read();
-
 	while(1) {
 		if(READ_BIT(UART_1_flag, ready_bit)) {
 			CLEAR_BIT(UART_1_flag, ready_bit);

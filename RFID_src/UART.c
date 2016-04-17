@@ -31,15 +31,14 @@ void USART2_IRQHandler(void)
 	uint8_t data = 0;
 	int8_t ret = 0;
 	
-	if (USART2->SR & USART_SR_RXNE)
-		ret = buffer_set_byte(&UART2_receive_buffer, (uint8_t)USART2->DR);
+	if (USART2->SR & (USART_SR_ORE | USART_SR_RXNE))
+		buffer_set_byte(&UART2_receive_buffer, (uint8_t)USART2->DR);
 
-	if (USART2->SR & USART_SR_TXE) {
+	if (USART2->SR & USART_SR_TC) {
 		ret = buffer_get_byte(&UART2_transmit_buffer, &data);
 		if (!ret)
 			USART2->DR = data;
-		else if (ret == -ENOMEM)
-			UART_2_set_TXE_irq(0);
+		USART2->SR &= ~USART_SR_TC;
 	}
 }
 
@@ -67,15 +66,19 @@ HAL_StatusTypeDef UART_1_init()
 void HAL_UART_MspInit(UART_HandleTypeDef *huart) 
 {
 	GPIO_InitTypeDef init_gpio;
-	if (huart->Instance == USART1) init_gpio.Pin = GPIO_PIN_9;
-	else if (huart->Instance == USART2) init_gpio.Pin = GPIO_PIN_2;
+	if (huart->Instance == USART1) 
+		init_gpio.Pin = GPIO_PIN_9;
+	else if (huart->Instance == USART2) 
+		init_gpio.Pin = GPIO_PIN_2;
 	init_gpio.Pull = GPIO_NOPULL;
 	init_gpio.Mode = GPIO_MODE_AF_PP;
 	init_gpio.Speed = GPIO_SPEED_FREQ_HIGH;
 	__HAL_RCC_GPIOA_CLK_ENABLE();
 	HAL_GPIO_Init(GPIOA, &init_gpio);	
-	if (huart->Instance == USART1) init_gpio.Pin = GPIO_PIN_10;
-	else if (huart->Instance == USART2) init_gpio.Pin = GPIO_PIN_3;
+	if (huart->Instance == USART1) 
+		init_gpio.Pin = GPIO_PIN_10;
+	else if (huart->Instance == USART2) 
+		init_gpio.Pin = GPIO_PIN_3;
 	init_gpio.Pull = GPIO_PULLDOWN;
 	init_gpio.Mode = GPIO_MODE_AF_INPUT;
 	HAL_GPIO_Init(GPIOA, &init_gpio);
@@ -108,14 +111,16 @@ HAL_StatusTypeDef UART_2_init()
 
 	uart_2_handler.Init = init;
 	uart_2_handler.Instance = USART2;	
-	ret = HAL_UART_Init(&uart_2_handler);
-	if (ret)
-		return ret;
+	
 	memset(&UART2_receive_buffer, 0, sizeof(struct simple_buffer));
 	memset(&UART2_transmit_buffer, 0, sizeof(struct simple_buffer));
+	
+	USART2->CR1 &= ~(USART_CR1_PEIE | USART_CR1_TXEIE | USART_CR1_IDLEIE);
 	USART2->CR1 |= USART_CR1_RXNEIE;
-	UART_2_set_TXE_irq(0);
-	return HAL_OK;
+	USART2->CR1 |= USART_CR1_TCIE;
+
+	ret = HAL_UART_Init(&uart_2_handler);
+	return ret;
 }
 
 void UART_1_set_irq(uint8_t set) 
@@ -124,11 +129,4 @@ void UART_1_set_irq(uint8_t set)
 		USART1->CR1 &= ~USART_CR1_RXNEIE;
 	else
 		USART1->CR1 |= USART_CR1_RXNEIE;	
-}
-
-void UART_2_set_TXE_irq(uint8_t set) {
-	if (!set)
-		USART2->CR1 &= ~USART_CR1_TXEIE;
-	else 
-		USART2->CR1 |= USART_CR1_TXEIE;
 }
