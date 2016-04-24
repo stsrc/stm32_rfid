@@ -34,10 +34,12 @@ void USART2_IRQHandler(void)
 	if (USART2->SR & (USART_SR_ORE | USART_SR_RXNE))
 		buffer_set_byte(&UART2_receive_buffer, (uint8_t)USART2->DR);
 
-	if (USART2->SR & USART_SR_TC) {
+	if (USART2->SR & (USART_SR_TC | USART_SR_TXE)) {
 		ret = buffer_get_byte(&UART2_transmit_buffer, &data);
 		if (!ret)
 			USART2->DR = data;
+		else
+			USART2->CR1 &= ~USART_CR1_TXEIE;
 		USART2->SR &= ~USART_SR_TC;
 	}
 }
@@ -115,12 +117,17 @@ HAL_StatusTypeDef UART_2_init()
 	memset(&UART2_receive_buffer, 0, sizeof(struct simple_buffer));
 	memset(&UART2_transmit_buffer, 0, sizeof(struct simple_buffer));
 	
-	USART2->CR1 &= ~(USART_CR1_PEIE | USART_CR1_TXEIE | USART_CR1_IDLEIE);
+	USART2->CR1 = 0;
+	ret = HAL_UART_Init(&uart_2_handler);
 	USART2->CR1 |= USART_CR1_RXNEIE;
 	USART2->CR1 |= USART_CR1_TCIE;
-
-	ret = HAL_UART_Init(&uart_2_handler);
+	USART2->CR1 |= USART_CR1_TXEIE;
 	return ret;
+}
+
+void UART_2_transmit(void) 
+{
+	USART2->CR1 |= USART_CR1_TXEIE;
 }
 
 void UART_1_set_irq(uint8_t set) 

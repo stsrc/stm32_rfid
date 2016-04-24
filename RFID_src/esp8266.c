@@ -41,9 +41,9 @@ int8_t esp8266_Send(const char *data)
 {
 	int8_t ret;
 	ret = buffer_set_text(&UART2_transmit_buffer, data);
-	if (ret)
-		return ret;
-	return 0;
+	if (!ret)
+		UART_2_transmit();
+	return ret;
 }
 
 int8_t esp8266_GetReply(const char *command, char *output)
