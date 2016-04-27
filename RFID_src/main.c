@@ -47,9 +47,20 @@ void print_time()
 	TM_ILI9341_Puts(10, 20, buf, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 }
 
+void esp8266_test() 
+{
+	TM_ILI9341_Puts(10, 70, UART2_receive_buffer.memory, &TM_Font_7x10, ILI9341_COLOR_BLACK,
+			ILI9341_COLOR_WHITE);
+	buffer_Reset(&UART2_receive_buffer);
+	delay_ms(3000);
+	TM_ILI9341_Fill(ILI9341_COLOR_BLACK);
+	TM_ILI9341_Puts(10, 10, "TEST\0", &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
+}
+
 int main(void)
 {
 	char buf[256];
+	int ret;
 	memset(buf, 0, sizeof(buf));
 	set_interrupts();
 	set_leds();
@@ -59,11 +70,15 @@ int main(void)
 	RFID_Init();
 	RTC_Init();
 	esp8266_Init();
-	esp8266_GetReply("AT+GMR\r\n\0", buf);
-	TM_ILI9341_Puts(10, 50, buf, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
-	RFID_Read();
+	esp8266_Send("AT+GMR\r\n\0");
+	//ret = esp8266_SendGetReply("AT+GMR\r\n\0", buf);
+	//if (ret) 
+	delay_ms(1000);
+	ret = esp8266_GetReply("AT+GMR\r\n\0", buf, 100, 10);
+	TM_ILI9341_Puts(10, 70, buf, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
+	//RFID_Read();
 	while(1) {
-		if(READ_BIT(UART_1_flag, ready_bit)) {
+	/*	if(READ_BIT(UART_1_flag, ready_bit)) {
 			CLEAR_BIT(UART_1_flag, ready_bit);
 			RFID_CardNumber(buf);
 			TM_ILI9341_Puts(10, 10, buf, &TM_Font_7x10, 
@@ -73,7 +88,7 @@ int main(void)
 		} else if (RTC_second_flag) {
 			RTC_second_flag = 0;
 			print_time();
-		}
+		}*/
 	}
 	return 0;
 }

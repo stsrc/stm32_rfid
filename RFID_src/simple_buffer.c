@@ -46,16 +46,30 @@ int8_t buffer_set_text(struct simple_buffer *buf, const char *text)
 	return 0;
 }
 
+int8_t buffer_IsFull(struct simple_buffer *buf) 
+{
+	uint8_t temp = buffer_IncrementCounter(buf->head);
+	if (buf->tail == temp)
+		return -ENOMEM;
+	else
+		return 0;
+}
+
 int8_t buffer_SearchGetLabel(struct simple_buffer *buf, const char *command, 
 			     char *output)
 {	
 	size_t cnt = 0;
 	uint8_t byte = 0;
+	int8_t ret;
 	uint8_t tail_old = buf->tail;
 	while(buf->tail != buf->head) {
-		buffer_get_byte(buf, &byte);
+		ret = buffer_get_byte(buf, &byte);
+		if (ret == -ENOMEM) {
+			ret = -EBUSY;
+			goto error;
+		}
 		if (command[cnt] == byte) {
-			if (cnt == strlen(command) - 2)	{
+			if (cnt == strlen(command) - 1)	{
 				while(!buffer_get_byte(buf, &byte)) {
 					*(output++) = byte;
 					if ((*(output - 2) == 'O') && 
@@ -65,14 +79,21 @@ int8_t buffer_SearchGetLabel(struct simple_buffer *buf, const char *command,
 						return 0;
 					}
 				}
-				buf->tail = tail_old;
-				return -EBUSY;
+				ret = -EBUSY;
+				goto error;
 			}
 			cnt++;
 		} else {
 			cnt = 0;
 		}
 	}
+	ret = -EINVAL;
+error:
 	buf->tail = tail_old;
-	return -EINVAL;
+	return ret;
+}
+
+void buffer_Reset(struct simple_buffer *buf) 
+{
+	memset(buf, 0, sizeof(struct simple_buffer));
 }

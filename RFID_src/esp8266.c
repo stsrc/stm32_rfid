@@ -6,6 +6,8 @@
 #define ESP8266_FW_PORT		GPIOA
 #define ESP8266_FW_PIN		GPIO_PIN_8
 
+#define AT_RESET_CMD		"AT+RST\r\n\0"
+
 void esp8266_InitPins() 
 {
 	GPIO_InitTypeDef init;
@@ -27,14 +29,26 @@ void esp8266_HardReset()
 	delay_ms(500);	
 }
 
+int8_t esp8266_WaitForOk(const char *command, unsigned int delay, uint8_t multiplier) 
+{
+	int8_t ret;
+	char temp[BUF_MEM_SIZE];
+	ret = esp8266_GetReply(command, temp, delay, multiplier);
+	return ret;	
+}
+
 void esp8266_Init() 
 {
+	const char * const RST_CMD = AT_RESET_CMD;
 	esp8266_InitPins();
 	esp8266_HardReset();
 	UART_2_init();
-	memset(&UART2_receive_buffer, 0, sizeof(struct simple_buffer));
-	esp8266_Send("AT+GMR\r\n\0");
-	delay_ms(500);
+	buffer_Reset(&UART2_transmit_buffer);
+	delay_ms(3000);
+	buffer_Reset(&UART2_receive_buffer);
+	esp8266_Send(RST_CMD);
+	esp8266_WaitForOk(RST_CMD, 100, 10);
+	buffer_Reset(&UART2_receive_buffer);
 }
 
 int8_t esp8266_Send(const char *data) 
@@ -46,7 +60,25 @@ int8_t esp8266_Send(const char *data)
 	return ret;
 }
 
-int8_t esp8266_GetReply(const char *command, char *output)
+int8_t esp8266_SendGetReply(const char *command, char *output)
 {
-	return buffer_SearchGetLabel(&UART2_receive_buffer, command, output);
+	int8_t ret;
+	if (buffer_IsFull(&UART2_transmit_buffer))
+		return -ENOMEM;
+	buffer_Reset(&UART2_receive_buffer);		
+	esp8266_Send(command);
+	do {
+		ret = buffer_SearchGetLabel(&UART2_receive_buffer, command, output);
+	} while (ret == -EBUSY);
+	return ret;
+}
+
+int8_t esp8266_GetReply(const char *command, char *output, unsigned int delay, uint8_t multiplier)
+{
+	int8_t ret, cnt = 0;
+	do {
+		delay_ms(delay);
+		ret = buffer_SearchGetLabel(&UART2_receive_buffer, command, output);
+	} while (((ret == -EBUSY) || (ret == -EINVAL)) && (++cnt < multiplier));
+	return ret;
 }

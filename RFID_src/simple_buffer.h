@@ -18,5 +18,6 @@ int8_t buffer_get_byte(struct simple_buffer* buf, uint8_t *byte);
 int8_t buffer_set_byte(struct simple_buffer* buf, uint8_t byte);	
 int8_t buffer_set_text(struct simple_buffer *buf, const char *text);
 int8_t buffer_SearchGetLabel(struct simple_buffer *buf, const char *command, char *output);
-
+int8_t buffer_IsFull(struct simple_buffer *buf);
+void buffer_Reset(struct simple_buffer *buf);
 #endif
