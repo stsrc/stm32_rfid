@@ -47,21 +47,37 @@ void print_time()
 	TM_ILI9341_Puts(10, 20, buf, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 }
 
-void esp8266_test() 
+void esp8266_test(const char *test, int ret) {
+	if (ret) {
+		TM_ILI9341_Puts(10, 70, (char *)test, 
+				&TM_Font_7x10, ILI9341_COLOR_BLACK, 
+				ILI9341_COLOR_WHITE);
+		TM_ILI9341_Puts(10, 100, "NO OK!!! BUG!!!\0", 
+				&TM_Font_7x10, ILI9341_COLOR_BLACK, 
+				ILI9341_COLOR_WHITE);
+		while(1);
+	}
+}
+
+inline static void lcd_write(char *buf, size_t x, size_t y) {
+	TM_ILI9341_Puts(x, y, buf, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
+}
+
+int8_t GetTime() 
 {
-	TM_ILI9341_Puts(10, 70, UART2_receive_buffer.memory, &TM_Font_7x10, ILI9341_COLOR_BLACK,
-			ILI9341_COLOR_WHITE);
-	buffer_Reset(&UART2_receive_buffer);
-	delay_ms(3000);
-	TM_ILI9341_Fill(ILI9341_COLOR_BLACK);
-	TM_ILI9341_Puts(10, 10, "TEST\0", &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
+	int ret;
+	uint8_t hour, minute, second;
+	ret = esp8266_GetTime(&hour, &minute, &second);
+	if (ret) {
+		lcd_write("GetTime failed!\0", 10, 10);
+		while(1);
+	}
+	return ret;
 }
 
 int main(void)
 {
-	char buf[256];
 	int ret;
-	memset(buf, 0, sizeof(buf));
 	set_interrupts();
 	set_leds();
 	TM_ILI9341_Init();
@@ -69,26 +85,11 @@ int main(void)
 	xpt2046_init();
 	RFID_Init();
 	RTC_Init();
-	esp8266_Init();
-	esp8266_Send("AT+GMR\r\n\0");
-	//ret = esp8266_SendGetReply("AT+GMR\r\n\0", buf);
-	//if (ret) 
-	delay_ms(1000);
-	ret = esp8266_GetReply("AT+GMR\r\n\0", buf, 100, 10);
-	TM_ILI9341_Puts(10, 70, buf, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
-	//RFID_Read();
-	while(1) {
-	/*	if(READ_BIT(UART_1_flag, ready_bit)) {
-			CLEAR_BIT(UART_1_flag, ready_bit);
-			RFID_CardNumber(buf);
-			TM_ILI9341_Puts(10, 10, buf, &TM_Font_7x10, 
-					ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
-		} else if (READ_BIT(UART_1_flag, error_bit)) {
-			CLEAR_BIT(UART_1_flag, error_bit);
-		} else if (RTC_second_flag) {
-			RTC_second_flag = 0;
-			print_time();
-		}*/
+	ret = esp8266_Init();
+	if (ret) {
+		lcd_write("esp8266 initalization failed!\0", 10, 10);
+		while(1);
 	}
+	GetTime();
 	return 0;
 }

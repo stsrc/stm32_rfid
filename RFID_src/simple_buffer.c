@@ -55,41 +55,87 @@ int8_t buffer_IsFull(struct simple_buffer *buf)
 		return 0;
 }
 
-int8_t buffer_SearchGetLabel(struct simple_buffer *buf, const char *command, 
-			     char *output)
-{	
-	size_t cnt = 0;
-	uint8_t byte = 0;
+int8_t buffer_MoveTailToLabel(struct simple_buffer *buf, const char *label)
+{
+	uint8_t byte;
 	int8_t ret;
-	uint8_t tail_old = buf->tail;
-	while(buf->tail != buf->head) {
+	size_t cnt = 0;
+	size_t tail_old = buf->tail;
+	while (buf->tail != buf->head) {
 		ret = buffer_get_byte(buf, &byte);
 		if (ret == -ENOMEM) {
-			ret = -EBUSY;
-			goto error;
+			buf->tail = tail_old;
+			return -EBUSY;
 		}
-		if (command[cnt] == byte) {
-			if (cnt == strlen(command) - 1)	{
-				while(!buffer_get_byte(buf, &byte)) {
-					*(output++) = byte;
-					if ((*(output - 2) == 'O') && 
-					    (*(output - 1) == 'K')) {
-						*(output - 2) = '\0';
-						*(output - 1) = '\0';
-						return 0;
-					}
-				}
-				ret = -EBUSY;
-				goto error;
-			}
-			cnt++;
+		if (label[cnt] == byte) {
+			if (cnt == strlen(label) - 3)
+				return 0;
+			else 
+				cnt++;
 		} else {
 			cnt = 0;
 		}
-	}
-	ret = -EINVAL;
-error:
+	}	
 	buf->tail = tail_old;
+	return -EINVAL;
+}
+
+int8_t buffer_SearchGetLabel(struct simple_buffer *buf, const char *command, 
+			     char *output)
+{	
+	int8_t ret;
+	size_t tail_old = buf->tail;
+	ret = buffer_MoveTailToLabel(buf, command);
+	if (ret)
+		return ret;
+	ret = buffer_CopyToNearestWord(buf, output, "OK\0");
+	if (ret)
+		buf->tail = tail_old;
+	return ret;
+}
+
+int8_t buffer_CopyToNearestSign(struct simple_buffer *buf, char* output, 
+				const char sign)
+{
+	uint8_t byte = 0;
+	size_t tail_old = buf->tail;
+	while(!buffer_get_byte(buf, &byte)) {
+		if (byte == sign) {
+			*output = '\0';
+			return 0;
+		}
+		*output++ = byte;
+	}
+	buf->tail = tail_old;
+	return -EINVAL;
+}
+
+int8_t buffer_CopyToNearestWord(struct simple_buffer *buf, char *output,
+				const char *word)
+{
+	uint8_t byte = 0;
+	size_t len = strlen(word);
+	size_t cnt = 0;
+	int8_t ret;
+	size_t tail_old = buf->tail;
+	while(!(ret = buffer_get_byte(buf, &byte))) {
+		*output = byte;
+		if (*output == word[len - 1]) {
+			for (cnt = 0; cnt < len; cnt++) {
+				if (*(output - cnt) != word[len - 1 - cnt])
+					break;
+			}
+			if (cnt == len) {
+				for (int i = len - 1; i >= 0; i--)
+					*output-- = '\0';
+				return 0;
+			}
+		}
+		output++;
+	}
+	buf->tail = tail_old;
+	if (ret == -ENOMEM)
+		ret = -EBUSY;
 	return ret;
 }
 
