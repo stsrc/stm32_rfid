@@ -99,7 +99,6 @@ int8_t esp8266_Init()
 	esp8266_HardReset();
 	UART_2_init();
 	buffer_Reset(&UART2_transmit_buffer);
-	delay_ms(5000);
 	esp8266_Send(RST_CMD);
 	delay_ms(5000);
 	buffer_Reset(&UART2_receive_buffer);

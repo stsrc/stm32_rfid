@@ -1,17 +1,13 @@
 # name of executable
-
 ELF=$(notdir $(CURDIR)).elf                    
 
 # Tool path
-
 TOOLROOT=/home/konrad/Programming/eb/STM32/toolchain/gcc-arm-none-eabi-5_2-2015q4/bin
 
 # Libroot path
-
 LIBROOT=/home/konrad/Programming/eb/STM32/toolchain/firmware
 
 # Tools
-
 CPP=$(TOOLROOT)/arm-none-eabi-g++
 CC=$(TOOLROOT)/arm-none-eabi-gcc
 LD=$(TOOLROOT)/arm-none-eabi-gcc
@@ -19,20 +15,17 @@ AR=$(TOOLROOT)/arm-none-eabi-ar
 AS=$(TOOLROOT)/arm-none-eabi-as
 
 # Library paths
-
 CORE=$(LIBROOT)/CORE
 STDPERIPH=$(LIBROOT)/StdPeriph_Driver
 HAL=$(LIBROOT)/STM32Cube_FW_F1_V1.3.0/Drivers/STM32F1xx_HAL_Driver
 
 # Search path for core files
-
 vpath %.c $(CORE)/src
 vpath %.s $(CORE)/src
 vpath %.c $(STDPERIPH)/src
 vpath %.c $(HAL)/Src
 
 #  Processor specific
-#
 LDSCRIPT=$(CORE)/linker/STM32F100XB_FLASH.ld
 STARTUP=startup_stm32f100xb.o system_stm32f1xx.o 
 PTYPE=STM32F10X_MD_VL
@@ -49,18 +42,13 @@ CFLAGS+= -I$(CORE)/inc -I$(STDPERIPH)/inc -I$(HAL)/Inc -I.
 CFLAGS+= -D$(PTYPE) -D$(MTYPE)
 CFLAGS+= -std=gnu99
 
-
-
 # Build executable
-
 $(ELF) : $(OBJS)
 	$(LD) $(LDFLAGS) -o $@ $(OBJS) 
 
 # compile and generate dependency info
-
 %.o: %.c
 	$(CC) -c $(CFLAGS) $< -o $@
-#	$(CC) -MM $(CFLAGS) $< > $*.d
 
 %.o: %.s
 	$(CC) -c $(CFLAGS) $< -o $@
@@ -71,9 +59,7 @@ clean:
 debug: $(ELF)
 	armeb-unknown-eabi-gdb $(ELF)
 
-
 # pull in dependencies
-
 -include $(OBJS:.o=.d)
 
 
