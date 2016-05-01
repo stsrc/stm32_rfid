@@ -31,11 +31,11 @@ void set_leds()
 void SetInterrupts()
 {
 	HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
-	HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 0, 0);
-	HAL_NVIC_SetPriority(EXTI3_IRQn, 2, 0);
-	HAL_NVIC_SetPriority(USART1_IRQn, 3, 0);
-	HAL_NVIC_SetPriority(USART2_IRQn, 4, 0);
-	HAL_NVIC_SetPriority(RTC_IRQn, 1, 0);
+	HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 13, 0);
+	HAL_NVIC_SetPriority(EXTI3_IRQn, 15, 0);
+	HAL_NVIC_SetPriority(USART1_IRQn, 1, 0);
+	HAL_NVIC_SetPriority(USART2_IRQn, 0, 0);
+	HAL_NVIC_SetPriority(RTC_IRQn, 14, 0);
 }
 
 void PrintTime() 
@@ -104,9 +104,12 @@ int main(void)
 		if (!ret) {
 			TM_ILI9341_DrawRectangle(0, 100, 239, 319, ILI9341_COLOR_BLACK);
 			LcdWrite(buf, 0, 100);
+			ret = esp8266_WritePage();
+			if (ret)
+				LcdWrite("Problem with WritePage\0", 0, 300);
 		}
-		delay_ms(10000);
-		PrintTime();		
+		PrintTime();	
+		delay_ms(500);	
 	}
 	return 0;
 }

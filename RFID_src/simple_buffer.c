@@ -34,10 +34,13 @@ int8_t buffer_set_text(struct simple_buffer *buf, const char *text)
 {
 	int8_t ret;
 	size_t len = strlen(text);
-	if (len >= BUF_MEM_SIZE)
-		return -ENOMEM;
-	if (len > BUF_MEM_SIZE - buf->head)
-		return -ENOMEM;
+	if (buf->head >= buf->tail) {
+		if (len >= BUF_MEM_SIZE - (buf->head - buf->tail))
+			return -ENOMEM;
+	} else if (buf-> head < buf->tail) {
+		if (len >= BUF_MEM_SIZE - (buf->tail - buf->head))
+			return -ENOMEM;
+	}
 	for (size_t i = 0; i < len; i++) {
 		ret = buffer_set_byte(buf, text[i]);
 		if (ret)

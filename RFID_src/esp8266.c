@@ -200,6 +200,37 @@ int8_t esp8266_GetTime(uint8_t *hour, uint8_t *minute, uint8_t *second)
 	return 0;
 }
 
+int8_t esp8266_WriteATCIPSEND(uint8_t id, char *data) {
+	unsigned int data_len = (unsigned int)strlen(data);
+	char buf[BUF_MEM_SIZE];
+	char temp[10];
+	int ret;
+	memset(buf, 0, sizeof(buf));
+	memset(temp, 0, sizeof(temp));
+	sprintf(temp, "%u,%u\r\n", (unsigned int)id, data_len);
+	strcpy(buf, "AT+CIPSEND=\0");
+	strcat(buf, temp);
+	ret = esp8266_Send(buf);
+	if (ret)
+		return -1;
+	ret = esp8266_WaitForOk(buf, 100, 100);
+	if (ret)
+		return -2;
+	ret = esp8266_Send(data);
+	if (ret)
+		return -3;
+	delay_ms(5000);
+	return 0;
+}
+
+int8_t esp8266_WritePage()
+{
+	int8_t ret;
+	char *http_data = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE HTML>\r\n<html>\r\nHello web world</html>\n\0";
+	ret = esp8266_WriteATCIPSEND(0, http_data);
+	return ret;	
+}
+
 inline int8_t esp8266_GetIp(char *buf)
 {
 	return esp8266_SendGetReply("AT+CIFSR\r\n\0", buf, 100, 10);
