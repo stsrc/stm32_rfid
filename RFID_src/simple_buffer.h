@@ -26,4 +26,5 @@ int8_t buffer_CopyToNearestSign(struct simple_buffer *buf, char* output,
 				const char sign);
 int8_t buffer_CopyToNearestWord(struct simple_buffer *buf, char* output, 
 				const char * word);
+void buffer_CopyTillHead(struct simple_buffer *buf, char *output);
 #endif

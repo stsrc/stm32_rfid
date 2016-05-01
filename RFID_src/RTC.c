@@ -7,13 +7,23 @@ void RTC_IRQHandler() {
 	RTC->CRL &= ~RTC_CRL_SECF;
 }
 
-static void RTC_set_time(uint8_t hour, uint8_t min, uint8_t sec) {
+void RTC_SetTime(uint8_t hour, uint8_t min, uint8_t sec) {
 	uint32_t temp = hour * 3600 + min * 60 + sec;
+	/* Entering configuration mode */
+	RTC->CRL |= RTC_CRL_CNF;
+	/* Waiting for entry to configuration mode */
+	while(!(RTC->CRL & RTC_CRL_RTOFF));
+
 	RTC->CNTH = (uint16_t)(temp >> 16);
 	RTC->CNTL = (uint16_t)(temp);
+	/* Leaving configuration mode */
+	RTC->CRL &= ~RTC_CRL_CNF;
+	
+	/* Waiting for end of write operation to CRL*/
+	while(!(RTC->CRL & RTC_CRL_RTOFF)); 
 }
 
-void RTC_get_time(uint8_t *hour, uint8_t *min, uint8_t *sec) {
+void RTC_GetTime(uint8_t *hour, uint8_t *min, uint8_t *sec) {
 	uint32_t temp = (RTC->CNTH << 16) | RTC->CNTL;
 	*hour = (temp / 3600) % 24;
 	*min = temp / 60 % 60;
@@ -23,7 +33,7 @@ void RTC_get_time(uint8_t *hour, uint8_t *min, uint8_t *sec) {
 HAL_StatusTypeDef RTC_Init()
 {
 	/*
-	 * After reset access to RTC registers is deisable, so
+	 * After reset access to RTC registers is disabled, so
 	 * there is need to update RCC register. Look to datasheet
 	 */
 	RCC->APB1ENR |= RCC_APB1ENR_PWREN | RCC_APB1ENR_BKPEN;
@@ -43,18 +53,12 @@ HAL_StatusTypeDef RTC_Init()
 	while(!(RTC->CRL & RTC_CRL_RTOFF));
 	/* Entering configuration mode */
 	RTC->CRL |= RTC_CRL_CNF;
-
-	/*Writing to registers*/
-	
 	/* Second interrupt enable */
 	RTC->CRH = RTC_CRH_SECIE;
 	/* RTC prescaler reload value high */
 	RTC->PRLH = 0;
 	/* RTC prescaler reload value low */
 	RTC->PRLL = 0x7FFF;
-	
-	RTC_set_time(23, 59, 50);
-
 	/* Leaving configuration mode */
 	RTC->CRL &= ~RTC_CRL_CNF;
 	/* Waiting for end of write operation */

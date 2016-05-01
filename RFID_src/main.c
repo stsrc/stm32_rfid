@@ -28,7 +28,7 @@ void set_leds()
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9, GPIO_PIN_RESET);
 }
 
-void set_interrupts()
+void SetInterrupts()
 {
 	HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
 	HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 0, 0);
@@ -38,47 +38,54 @@ void set_interrupts()
 	HAL_NVIC_SetPriority(RTC_IRQn, 1, 0);
 }
 
-void print_time() 
+void PrintTime() 
 {
 	uint8_t hour, min, sec;
 	char buf[10];
-	RTC_get_time(&hour, &min, &sec);
+	RTC_GetTime(&hour, &min, &sec);
 	sprintf(buf, "%02u:%02u:%02u", hour, min, sec);
 	TM_ILI9341_Puts(10, 20, buf, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 }
 
-void esp8266_test(const char *test, int ret) {
+inline static void LcdWrite(char *buf, size_t x, size_t y) {
+	TM_ILI9341_Puts(x, y, buf, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
+}
+
+void CheckError(char * message, int ret)
+{
 	if (ret) {
-		TM_ILI9341_Puts(10, 70, (char *)test, 
-				&TM_Font_7x10, ILI9341_COLOR_BLACK, 
-				ILI9341_COLOR_WHITE);
-		TM_ILI9341_Puts(10, 100, "NO OK!!! BUG!!!\0", 
-				&TM_Font_7x10, ILI9341_COLOR_BLACK, 
-				ILI9341_COLOR_WHITE);
+		LcdWrite(message, 10, 10);
 		while(1);
 	}
 }
 
-inline static void lcd_write(char *buf, size_t x, size_t y) {
-	TM_ILI9341_Puts(x, y, buf, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
-}
-
-int8_t GetTime() 
+int8_t UpdateTime() 
 {
 	int ret;
 	uint8_t hour, minute, second;
 	ret = esp8266_GetTime(&hour, &minute, &second);
-	if (ret) {
-		lcd_write("GetTime failed!\0", 10, 10);
-		while(1);
-	}
+	CheckError("GetTime failed!\0", ret);
+	RTC_SetTime(hour + 2, minute, second);	
 	return ret;
+}
+
+
+
+void GetIp()
+{
+	int8_t ret;
+	char buf[BUF_MEM_SIZE];
+	memset(buf, 0, BUF_MEM_SIZE);
+	ret = esp8266_GetIp(buf);
+	CheckError("GetIp Failed!\n", ret);
+	LcdWrite(buf, 0, 40);	
 }
 
 int main(void)
 {
 	int ret;
-	set_interrupts();
+	char buf[BUF_MEM_SIZE];
+	SetInterrupts();
 	set_leds();
 	TM_ILI9341_Init();
 	delay_init();
@@ -86,10 +93,20 @@ int main(void)
 	RFID_Init();
 	RTC_Init();
 	ret = esp8266_Init();
-	if (ret) {
-		lcd_write("esp8266 initalization failed!\0", 10, 10);
-		while(1);
+	CheckError("esp8266 initalization failed!\0", ret);
+	UpdateTime();
+	PrintTime();
+	GetIp();
+	ret = esp8266_MakeAsServer();
+	CheckError("esp8266_MakeAsServer failed!\0", ret);
+	while(1) {
+		ret = esp8266_ScanForData(buf);
+		if (!ret) {
+			TM_ILI9341_DrawRectangle(0, 100, 239, 319, ILI9341_COLOR_BLACK);
+			LcdWrite(buf, 0, 100);
+		}
+		delay_ms(10000);
+		PrintTime();		
 	}
-	GetTime();
 	return 0;
 }

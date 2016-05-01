@@ -143,3 +143,10 @@ void buffer_Reset(struct simple_buffer *buf)
 {
 	memset(buf, 0, sizeof(struct simple_buffer));
 }
+
+void buffer_CopyTillHead(struct simple_buffer *buf, char *output) 
+{
+	uint8_t byte;
+	while(!buffer_get_byte(buf, &byte))
+		*output++ = byte;
+}
