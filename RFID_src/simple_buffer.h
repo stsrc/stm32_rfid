@@ -5,9 +5,11 @@
 #include <errno.h>
 #include <string.h>
 
-#define BUF_MEM_SIZE 256
-
+#define BUF_MEM_SIZE 512
+#define TEMP_MEM_SIZE 16
 struct simple_buffer{
+	uint8_t lock;
+	char temp[TEMP_MEM_SIZE];
 	char memory[BUF_MEM_SIZE];
 	size_t head;
 	size_t tail;

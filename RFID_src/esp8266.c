@@ -15,6 +15,9 @@
 #define AT_CIPSTO		"AT+CIPSTO=30\r\n\0"
 #define AT_CIFSR		"AT+CIFSR\r\n\0"
 #define AT_CIPSEND		"AT+CIPSEND=\0"
+#define AT_CLOSE_SOCKET		"AT+CIPCLOSE=\0"
+
+static char * buf = NULL;
 
 void esp8266_InitPins() 
 {
@@ -40,8 +43,7 @@ void esp8266_HardReset()
 int8_t esp8266_WaitForOk(const char *command, unsigned int delay, uint8_t multiplier) 
 {
 	int8_t ret;
-	char temp[BUF_MEM_SIZE];
-	ret = esp8266_GetReply(command, "OK\0", temp, delay, multiplier);
+	ret = esp8266_GetReply(command, "OK\0", buf, delay, multiplier);
 	return ret;	
 }
 
@@ -93,21 +95,23 @@ int8_t esp8266_MakeAsServer()
 	return 0;
 }
 
-int8_t esp8266_Init() 
+int8_t esp8266_Init(char *global_buf) 
 {
-	int ret;
+	int8_t ret;
 	const char * const RST_CMD = AT_RESET_CMD;
+	buf = global_buf;
 	esp8266_InitPins();
 	esp8266_HardReset();
 	UART_2_init();
 	buffer_Reset(&UART2_transmit_buffer);
+	delay_ms(5000);
 	esp8266_Send(RST_CMD);
-	delay_ms(10000);
+	delay_ms(5000);
 	buffer_Reset(&UART2_receive_buffer);
 	ret = esp8266_ConnectToWiFi();
 	if (ret)
 		return ret;
-	return ret;
+	return 0;
 }
 
 int8_t esp8266_Send(const char *data) 
@@ -137,7 +141,8 @@ int8_t esp8266_GetReply(const char *command, const char *delimiter,
 {
 	int8_t ret, cnt = 0;
 	do {
-		ret = buffer_SearchGetLabel(&UART2_receive_buffer, command, delimiter, output);
+		ret = buffer_SearchGetLabel(&UART2_receive_buffer, command, 
+					    delimiter, output);
 		if (ret)
 			delay_ms(delay);
 	} while (((ret == -EBUSY) || (ret == -EINVAL)) && (++cnt < multiplier));
@@ -158,12 +163,12 @@ static inline void ParseTime(uint8_t *hour, uint8_t *minute, uint8_t *second,
 
 int8_t esp8266_GetTime(uint8_t *hour, uint8_t *minute, uint8_t *second)
 {
-	char buf[BUF_MEM_SIZE];
 	char *http_connect = "AT+CIPSTART=\"TCP\",\"www.google.com\",80\r\n\0";
 	char *http_disconnect = "AT+CIPCLOSE\r\n\0";
 	char *http_command = "AT+CIPSEND=19\r\n\0";
 	char *http_data = "HEAD / HTTP/1.1\r\n\r\n\0";
 	int8_t ret = 0;
+	memset(buf, 0, BUF_MEM_SIZE);
 	esp8266_Send(http_connect);
 	ret = esp8266_WaitForOk(http_connect, 100, 100);
 	if (ret)
@@ -174,27 +179,24 @@ int8_t esp8266_GetTime(uint8_t *hour, uint8_t *minute, uint8_t *second)
 		return -2;
 	esp8266_Send(http_data);
 	delay_ms(2000);
-	ret = buffer_MoveTailToLabel(&UART2_receive_buffer, "Date: \0");
+	ret = buffer_SearchGetLabel(&UART2_receive_buffer, "Date: \0", " GMT\0", buf);
 	if (ret)
 		return -3;
-	ret = buffer_CopyToNearestWord(&UART2_receive_buffer, buf, " GMT\0");
-	if (ret)
-		return -4;
 	ParseTime(hour, minute, second, buf);
 	buffer_Reset(&UART2_receive_buffer);
 	esp8266_Send(http_disconnect);
 	ret = esp8266_WaitForOk(http_disconnect, 100, 100);
 	if (ret)
-		return -5;
+		return -4;
 	return 0;
 }
 
-int8_t esp8266_WriteATCIPSEND(uint8_t id, char *data) {
+static inline int8_t esp8266_WriteATCIPSEND(uint8_t id, char *data) 
+{
 	unsigned int data_len = (unsigned int)strlen(data);
-	char buf[BUF_MEM_SIZE];
 	char temp[10];
 	int ret;
-	memset(buf, 0, sizeof(buf));
+	memset(buf, 0, BUF_MEM_SIZE);
 	memset(temp, 0, sizeof(temp));
 	sprintf(temp, "%u,%u\r\n", (unsigned int)id, data_len);
 	strcpy(buf, AT_CIPSEND);
@@ -211,25 +213,72 @@ int8_t esp8266_WriteATCIPSEND(uint8_t id, char *data) {
 	return 0;
 }
 
-int8_t esp8266_WritePage()
+static inline int8_t esp8266_WriteATCIPCLOSE(uint8_t id) 
+{
+	char temp[4];
+	char buf[20];
+	int ret;
+	memset(temp, 0, sizeof(temp));
+	memset(buf, 0, sizeof(buf));
+	sprintf(temp, "%u\r\n", id);
+	strcpy(buf, AT_CLOSE_SOCKET);
+	strcat(buf, temp);
+	ret = esp8266_Send(buf);
+	if (ret)
+		return -1;
+	ret = esp8266_WaitForOk(buf, 100, 100);
+	if (ret)
+		return -2;
+	return ret;
+}
+
+int8_t esp8266_WritePage(uint8_t id)
 {
 	int8_t ret;
-	char *http_data = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE HTML>\r\n<html>\r\nHello web world</html>\n\0";
-	ret = esp8266_WriteATCIPSEND(0, http_data);
+	char *http_data = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE HTML>\r\n<html>\r\nHello web world</html>\r\n\r\n\r\n\0";
+	ret = esp8266_WriteATCIPSEND(id, http_data);
+	if (ret)
+		return ret;
+	esp8266_WaitForOk("SEND\0", 100, 100);
+	ret = esp8266_WriteATCIPCLOSE(id);
 	return ret;	
 }
 
 inline int8_t esp8266_GetIp(char *buf)
 {
+	memset(buf, 0, BUF_MEM_SIZE);
 	return esp8266_SendGetReply(AT_CIFSR, "OK\0", buf, 100, 10);
 }
 
-int8_t esp8266_ScanForData(char *buf)
+int8_t esp8266_ScanForData(char *buf, uint8_t *id)
 {
 	int ret;
-	ret = buffer_MoveTailToLabel(&UART2_receive_buffer, "+IPD,\r\n\0"); 
+	char temp;
+	ret = buffer_MoveTailToLabel(&UART2_receive_buffer, "+IPD,\0"); 
 	if (ret) 
 		return -1;
-	buffer_CopyTillHead(&UART2_receive_buffer, buf);	
+	memset(buf, 0, BUF_MEM_SIZE);
+	buffer_CopyTillHead(&UART2_receive_buffer, buf);
+	temp = buf[0];
+	switch (temp) {
+	case '0':
+		*id = 0;
+		break;
+	case '1':
+		*id = 1;
+		break;
+	case '2':
+		*id = 2;
+		break;
+	case '3':
+		*id = 3;
+		break;
+	case '4':
+		*id = 4;
+		break;
+	default:
+		*id = 0xFF;
+		break;
+	}
 	return 0;
 }

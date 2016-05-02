@@ -71,10 +71,9 @@ int8_t UpdateTime()
 
 
 
-void GetIp()
+void GetIp(char *buf)
 {
 	int8_t ret;
-	char buf[BUF_MEM_SIZE];
 	memset(buf, 0, BUF_MEM_SIZE);
 	ret = esp8266_GetIp(buf);
 	CheckError("GetIp Failed!\n", ret);
@@ -85,6 +84,7 @@ int main(void)
 {
 	int ret;
 	char buf[BUF_MEM_SIZE];
+	uint8_t id;
 	SetInterrupts();
 	set_leds();
 	TM_ILI9341_Init();
@@ -92,24 +92,24 @@ int main(void)
 	xpt2046_init();
 	RFID_Init();
 	RTC_Init();
-	ret = esp8266_Init();
+	ret = esp8266_Init(buf);
 	CheckError("esp8266 initalization failed!\0", ret);
 	UpdateTime();
 	PrintTime();
-	GetIp();
+	GetIp(buf);
 	ret = esp8266_MakeAsServer();
 	CheckError("esp8266_MakeAsServer failed!\0", ret);
 	while(1) {
-		ret = esp8266_ScanForData(buf);
+		ret = esp8266_ScanForData(buf, &id);
 		if (!ret) {
-			TM_ILI9341_DrawRectangle(0, 100, 239, 319, ILI9341_COLOR_BLACK);
+			TM_ILI9341_DrawFilledRectangle(0, 100, 239, 319, ILI9341_COLOR_BLACK);
 			LcdWrite(buf, 0, 100);
-			ret = esp8266_WritePage();
+			ret = esp8266_WritePage(id);
 			if (ret)
 				LcdWrite("Problem with WritePage\0", 0, 300);
 		}
-		PrintTime();	
-		delay_ms(500);	
+		PrintTime();
+		delay_ms(2000);		
 	}
 	return 0;
 }

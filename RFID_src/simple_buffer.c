@@ -30,22 +30,79 @@ int8_t buffer_get_byte(struct simple_buffer* buf, uint8_t *byte)
 	return 0;
 }
 
-int8_t buffer_set_byte(struct simple_buffer* buf, uint8_t byte)
+static inline uint8_t buffer_CheckLockFlag(struct simple_buffer *buf) 
 {
-	uint8_t temp = buffer_IncrementCounter(buf->head);
+	return buf->lock & 1;
+}
+
+
+static inline int8_t buffer_PushBuf(struct simple_buffer *buf, uint8_t byte)
+{
+	size_t temp;
+	temp = buffer_IncrementCounter(buf->head);
 	if (buf->tail == temp)
 		return -ENOMEM;
 	buf->memory[buf->head] = byte;
 	buf->head = temp;
 	return 0;
+}
+
+/*RVO??*/
+static inline int8_t buffer_ClearTempBuf(struct simple_buffer *buf) 
+{
+	size_t cnt = buf->lock >> 1;
+	int8_t ret = 0;
+	for (size_t i = 0; i < cnt; i++) {
+		ret = buffer_PushBuf(buf, buf->temp[i]);
+		if (ret)
+			break;
+	}
+	return ret;
+}
+
+static inline int8_t buffer_PushTempBuf(struct simple_buffer *buf, 
+					uint8_t byte)
+{
+	uint8_t head;
+	head = buf->lock >> 1;
+	if (head == TEMP_MEM_SIZE)
+		return -ENOMEM;
+	buf->temp[head++] = byte;
+	buf->lock = (head << 1) | 1;
+	return 0;
+}
+
+static inline void buffer_SetLock(struct simple_buffer *buf) 
+{
+	buf->lock |= 1;
+}
+
+static inline void buffer_ClearLock(struct simple_buffer *buf)
+{
+	buf->lock &= ~1;
 }	
 
+int8_t buffer_set_byte(struct simple_buffer* buf, uint8_t byte)
+{
+	int8_t ret = 0;
+	if (buffer_CheckLockFlag(buf)) {
+		ret = buffer_PushTempBuf(buf, byte);
+	} else {
+		ret = buffer_ClearTempBuf(buf);
+		if (ret)
+			return ret;
+		ret = buffer_PushBuf(buf, byte);
+	}
+	return ret;
+}	
+
+/*ret equals to what if not = 0?*/
 int8_t buffer_set_text(struct simple_buffer *buf, const char *text) 
 {
-	int8_t ret;
+	int8_t ret = 0;
 	size_t len = strlen(text);
 	if (buf->head >= buf->tail) {
-		if (len >= BUF_MEM_SIZE - (buf->head - buf->tail))
+		if (len >= BUF_MEM_SIZE - (buf->head - buf->tail)) 
 			return -ENOMEM;
 	} else if (buf-> head < buf->tail) {
 		if (len >= BUF_MEM_SIZE - (buf->tail - buf->head))
@@ -54,14 +111,14 @@ int8_t buffer_set_text(struct simple_buffer *buf, const char *text)
 	for (size_t i = 0; i < len; i++) {
 		ret = buffer_set_byte(buf, text[i]);
 		if (ret)
-			return ret;
+			break;
 	}
-	return 0;
+	return ret;
 }
 
 int8_t buffer_IsFull(struct simple_buffer *buf) 
 {
-	uint8_t temp = buffer_IncrementCounter(buf->head);
+	size_t temp = buffer_IncrementCounter(buf->head);
 	if (buf->tail == temp)
 		return -ENOMEM;
 	else
@@ -99,13 +156,18 @@ int8_t buffer_SearchGetLabel(struct simple_buffer *buf, const char *label,
 			     const char *limiter, char *output)
 {	
 	int8_t ret;
-	size_t tail_old = buf->tail;
+	size_t tail_old;
+	buffer_SetLock(buf);
+	tail_old = buf->tail;
 	ret = buffer_MoveTailToLabel(buf, label);
-	if (ret)
+	if (ret) {
+		buffer_ClearLock(buf);
 		return ret;
+	}
 	ret = buffer_CopyToNearestWord(buf, output, limiter);
 	if (ret)
 		buf->tail = tail_old;
+	buffer_ClearLock(buf);
 	return ret;
 }
 
