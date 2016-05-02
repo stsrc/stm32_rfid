@@ -11,10 +11,11 @@ void esp8266_InitPins();
 void esp8266_HardReset();
 int8_t esp8266_Init(); 
 int8_t esp8266_Send(const char *command);
-int8_t esp8266_SendGetReply(const char *command, char *output, 
-			    unsigned int delay, uint8_t multiplier);
-int8_t esp8266_GetReply(const char *command, char *output, unsigned int delay,
-			uint8_t multiplier);
+int8_t esp8266_SendGetReply(const char *command, const char *delimiter, 
+			    char *output, unsigned int delay,
+			    uint8_t multiplier);
+int8_t esp8266_GetReply(const char *command, const char *delimiter, 
+			char *output, unsigned int delay, uint8_t multiplier);
 int8_t esp8266_WaitForOk(const char *command, unsigned int delay, 
 			 uint8_t multiplier);
 int8_t esp8266_GetTime(uint8_t *hour, uint8_t *minute, uint8_t *second);

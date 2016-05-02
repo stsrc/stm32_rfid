@@ -6,6 +6,16 @@ void buffer_init(struct simple_buffer *buf)
 	memset(buf, 0, sizeof(struct simple_buffer));
 }
 
+static size_t LengthOfString(const char * string) {
+	size_t ret = 0;
+	char sign;
+	while ((sign = *string++) != '\0') {
+		if ((sign != '\n') && (sign != '\r'))
+			ret++;
+	}
+	return ret;
+}
+
 static inline size_t buffer_IncrementCounter(size_t counter)
 {
 	return (counter + 1) % BUF_MEM_SIZE;
@@ -63,7 +73,9 @@ int8_t buffer_MoveTailToLabel(struct simple_buffer *buf, const char *label)
 	uint8_t byte;
 	int8_t ret;
 	size_t cnt = 0;
+	const size_t LENGTH = LengthOfString(label);
 	size_t tail_old = buf->tail;
+	
 	while (buf->tail != buf->head) {
 		ret = buffer_get_byte(buf, &byte);
 		if (ret == -ENOMEM) {
@@ -71,7 +83,7 @@ int8_t buffer_MoveTailToLabel(struct simple_buffer *buf, const char *label)
 			return -EBUSY;
 		}
 		if (label[cnt] == byte) {
-			if (cnt == strlen(label) - 3)
+			if (cnt == LENGTH - 1)
 				return 0;
 			else 
 				cnt++;
@@ -83,15 +95,15 @@ int8_t buffer_MoveTailToLabel(struct simple_buffer *buf, const char *label)
 	return -EINVAL;
 }
 
-int8_t buffer_SearchGetLabel(struct simple_buffer *buf, const char *command, 
-			     char *output)
+int8_t buffer_SearchGetLabel(struct simple_buffer *buf, const char *label, 
+			     const char *limiter, char *output)
 {	
 	int8_t ret;
 	size_t tail_old = buf->tail;
-	ret = buffer_MoveTailToLabel(buf, command);
+	ret = buffer_MoveTailToLabel(buf, label);
 	if (ret)
 		return ret;
-	ret = buffer_CopyToNearestWord(buf, output, "OK\0");
+	ret = buffer_CopyToNearestWord(buf, output, limiter);
 	if (ret)
 		buf->tail = tail_old;
 	return ret;
@@ -117,7 +129,7 @@ int8_t buffer_CopyToNearestWord(struct simple_buffer *buf, char *output,
 				const char *word)
 {
 	uint8_t byte = 0;
-	size_t len = strlen(word);
+	const size_t len = LengthOfString(word);
 	size_t cnt = 0;
 	int8_t ret;
 	size_t tail_old = buf->tail;
