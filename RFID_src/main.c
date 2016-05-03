@@ -104,7 +104,7 @@ int main(void)
 		if (!ret) {
 			TM_ILI9341_DrawFilledRectangle(0, 100, 239, 319, ILI9341_COLOR_BLACK);
 			LcdWrite(buf, 0, 100);
-			ret = esp8266_WritePage(id);
+			ret = esp8266_WritePage(NULL, id, 1);
 			if (ret)
 				LcdWrite("Problem with WritePage\0", 0, 300);
 		}

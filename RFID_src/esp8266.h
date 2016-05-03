@@ -22,5 +22,5 @@ int8_t esp8266_GetTime(uint8_t *hour, uint8_t *minute, uint8_t *second);
 int8_t esp8266_GetIp(char *buf);
 int8_t esp8266_ScanForData(char *buf, uint8_t *id);
 int8_t esp8266_MakeAsServer();
-int8_t esp8266_WritePage(uint8_t id);
+int8_t esp8266_WritePage(char *buf, uint8_t id, uint8_t close);
 #endif

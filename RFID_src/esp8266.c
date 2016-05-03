@@ -232,7 +232,7 @@ static inline int8_t esp8266_WriteATCIPCLOSE(uint8_t id)
 	return ret;
 }
 
-int8_t esp8266_WritePage(uint8_t id)
+int8_t esp8266_WritePage(char *buf, uint8_t id, uint8_t close)
 {
 	int8_t ret;
 	char *http_data = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE HTML>\r\n<html>\r\nHello web world</html>\r\n\r\n\r\n\0";
@@ -240,7 +240,8 @@ int8_t esp8266_WritePage(uint8_t id)
 	if (ret)
 		return ret;
 	esp8266_WaitForOk("SEND\0", 100, 100);
-	ret = esp8266_WriteATCIPCLOSE(id);
+	if (close)
+		ret = esp8266_WriteATCIPCLOSE(id);
 	return ret;	
 }
 
@@ -253,32 +254,21 @@ inline int8_t esp8266_GetIp(char *buf)
 int8_t esp8266_ScanForData(char *buf, uint8_t *id)
 {
 	int ret;
-	char temp;
-	ret = buffer_MoveTailToLabel(&UART2_receive_buffer, "+IPD,\0"); 
+	uint16_t temp_id, temp_len;
+	char *temp_buf;
+	memset(buf, 0, BUF_MEM_SIZE);
+	ret = buffer_SearchGetLabel(&UART2_receive_buffer, "+IPD,\0", 
+				    "HTTP/\0", buf);
 	if (ret) 
 		return -1;
-	memset(buf, 0, BUF_MEM_SIZE);
-	buffer_CopyTillHead(&UART2_receive_buffer, buf);
-	temp = buf[0];
-	switch (temp) {
-	case '0':
-		*id = 0;
-		break;
-	case '1':
-		*id = 1;
-		break;
-	case '2':
-		*id = 2;
-		break;
-	case '3':
-		*id = 3;
-		break;
-	case '4':
-		*id = 4;
-		break;
-	default:
-		*id = 0xFF;
-		break;
-	}
+	temp_buf = malloc(strlen(buf) + 1);
+	if (!temp_buf)
+		return -2;
+	memset(temp_buf, 0, strlen(buf) + 1);
+	buffer_Reset(&UART2_receive_buffer);
+	sscanf(buf, "%hu,%hu:GET /%s ", &temp_id, &temp_len, temp_buf);
+	strcpy(buf, temp_buf);
+	free(temp_buf);
+	*id = temp_id;
 	return 0;
 }

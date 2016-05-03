@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+	</head>
+	<body>
+		<p>Menu:
+			<a href="index.html">Strona główna</a>
+			<a href="opis.html">Opis projektu</a>
+			<a href="historia.html">Historia wykrytych kart RFID</a>
+			<a href="zarzadzaj.html">Zarządzanie kartami RFID</a>
+		</p>
+		<h1>Opis projektu.</h1>
+		<p><b>Repozytorium:</b></p>
+		<a href="https://github.com/stsrc/RFID">github.com/stsrc/RFID - link do repozytorium</a><br>
+		<p><b>Użyte moduły:</b></p>
+		1. Płytka STM32Discovery<br>
+		2. Wyświetlacz LCD z panelem dotykowym<br>
+		3. Czytnik kart SD<br>
+		4. Czytnik kart RFID<br>
+		5. Moduł do sieci Wi-Fi<br>
+		<p><b>1. Płytka STM32Discovery</b></p>
+		Płytka firmy STMicroelectronics, wyposażona w mikrokontroler STM32F100RB
+		oraz niezbędne elementy dodatkowe (programator, stabilizator napięcia itp.).
+		<a href="http://www2.st.com/content/st_com/en/products/evaluation-tools/product-evaluation-tools/mcu-eval-tools/stm32-mcu-eval-tools/stm32-mcu-discovery-kits/stm32vldiscovery.html?sc=stm32-discovery">
+			Link do płytki</a><br>
+		Parametry mikrokontrolera:<br>
+		Częstotliwość taktowania: 24MHz<br>
+		Pamięć Flash: 128kB<br>
+		Pamięć Ram: 8kB<br>
+		<img src="stmdiscovery.jpg" alt="Przod plytki" height="500" width="248"><br>
+		<p><b>2. Wyświetlacz LCD z panelem dotykowym</b></p>
+		Wyświetlacz kolorowy, rozmiar 2.8", interfejs SPI. Wyświetlacz bazuje na sterowniku ILI9341.<br>
+		Panel dotykowy rezystancyjny, komunikuje sie po tej samej magistrali SPI co wyświetlacz.<br> 
+		Bazuje na sterowniku xpt2046.<br>
+		<img src="lcd_przod.jpg" alt="Przod wyswietlacza" height="500" width="500"><br>
+		<img src="lcd_tyl.jpg" alt="Tyl wyswietlacza" height="500" width="500"><br>
+		<p><b>3. Czytnik kart SD</b></p>
+		Zamieszczony na wyświetlaczu, widoczny na ostatnim zdjęciu. Komunikacja po oddzielnej<br>
+		magistrali SPI.<br>
+		Na karcie SD zamieszczona jest strona internetowa oraz historia odczytów karty jak i skorelowane
+		z nimi prawa dostępu.</br>
+		<p><b>4. Czytnik kart RFID</b></p>
+		Czytnik zasilany napięciem 5V, komunikuje się przez interfejs UART.<br>
+		Celem dopasowania linii TX interfejsu UART do napięcia 3.3V zasotoswano dzielnik rezystancyjny.<br>
+		<img src="rfid_przod.jpg" alt="Przod czytnika RFID" height="366" width="500"><br>
+		<img src="rfid_tyl.jpg" alt="Tyl czytnika RFID" height="366" width="500"><br>
+		<a href="http://www.seeedstudio.com/depot/125Khz-RFID-module-UART-p-171.html">
+			Link do sklepu z takim czytnikiem i informacją o danych technicznych</a><br>
+		<p><b>5. Moduł do sieci Wi-Fi</b></p>
+		Moduł wykorzystuje popularny uklad <b>esp8266 (zasilanie - 3.3V)</b>,<br>
+		komunikacja przez interfejs UART.<br>
+		<b>Możliwosci ukladu:</b><br>
+		Łączenie się z Wi-Fi (do Access Pointu)<br>
+		Tworzenie sieci Wi-Fi (bycie Access Pointem!)<br>
+		Praca jako serwer (obsługa protokołu DHCP)<br>
+
+		<b>Zalety układu:</b><br>
+		Cena!<br>
+
+		<b>Wady układu:</b><br>
+		Układ pobiera w sposob impulsowy znaczny prad (300mA?), przez co wymagane jest lepsze<br>
+		niz zwykle źródło napięcia.<br>
+		W przypadku tego projektu podłączenie układu pod wyjście 3V3 plytki rozwojowej powodowało<br>
+		niestabilną pracę wszystkiego (resety mikrokontrolera). Podłączenie pod zewnętrzne źródło<br>
+		napięcia 3V3 z kondensatorem 100uF powodowało niestabilną pracę modułu. Zastosowanie<br>
+		kondensatora elektrolitycznego o pojemności co najmniej 470uF i ceramicznego 100nF<br>
+	       	rozwiązało problem.<br>
+		<img src=esp8266.jpg alt="Przod modulu Wi-Fi" height="325" width="500"><br>
+
