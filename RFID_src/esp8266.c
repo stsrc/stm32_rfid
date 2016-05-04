@@ -17,6 +17,14 @@
 #define AT_CIPSEND		"AT+CIPSEND=\0"
 #define AT_CLOSE_SOCKET		"AT+CIPCLOSE=\0"
 
+
+
+struct esp8266_channels_state {
+	char to_load[5][32];
+};
+static __IO uint8_t do_it = 0;
+static struct esp8266_channels_state esp8266_Channels;
+
 void esp8266_InitPins() 
 {
 	GPIO_InitTypeDef init;
@@ -91,6 +99,7 @@ int8_t esp8266_MakeAsServer()
 	ret = esp8266_WaitForOk(AT_CIPSTO, 100, 100);
 	if (ret)
 		return -8;
+	do_it = 1;
 	return 0;
 }
 
@@ -105,6 +114,7 @@ int8_t esp8266_Init(char *global_buf)
 	delay_ms(5000);
 	esp8266_Send(RST_CMD, strlen(RST_CMD));
 	delay_ms(5000);
+	memset(&esp8266_Channels, 0, sizeof(struct esp8266_channels_state));
 	buffer_Reset(&UART2_receive_buffer);
 	ret = esp8266_ConnectToWiFi();
 	if (ret)
@@ -256,7 +266,7 @@ inline int8_t esp8266_GetIp(char *buf)
 
 int8_t esp8266_ScanForData(char *buf, uint8_t *id)
 {
-	int ret;
+	int8_t ret;
 	uint16_t temp_id, temp_len;
 	char *temp_buf;
 	memset(buf, 0, BUF_MEM_SIZE);
@@ -274,4 +284,77 @@ int8_t esp8266_ScanForData(char *buf, uint8_t *id)
 	free(temp_buf);
 	*id = temp_id;
 	return 0;
+}
+
+void esp8266_ReceiveIRQHandler(uint8_t byte)
+{
+	static size_t cnt = 0;
+	static uint8_t state = 0;
+	int8_t ret;
+	uint8_t id;
+	char buf[BUF_MEM_SIZE]; //DANGER!!!
+	if (!do_it)
+		return;
+	
+	if (!state) {
+	switch(cnt) {
+	case 0:
+		if (byte == '+')
+			cnt = 1;
+		break;
+	case 1:
+		if (byte == 'I')
+			cnt = 2;
+		else
+			cnt = 0;
+		break;
+	case 2:
+		if (byte == 'P')
+			cnt = 3;
+		else
+			cnt = 0;
+		break;
+	case 3:
+		if (byte == 'D')
+			cnt = 4;
+		else
+			cnt = 0;
+		break;
+	case 4:
+		if (byte == ',') {
+			state = 1;
+			cnt = 0;
+		} else { 
+			state = 0;
+			cnt = 0;
+		}
+	}
+	}
+
+	switch(state) {
+	case 1:
+		memset(buf, 0, BUF_MEM_SIZE);
+		ret = esp8266_ScanForData(buf, &id);
+		if (ret)
+			return;
+		strncpy(esp8266_Channels.to_load[id], buf, 32);
+		state = 0;
+		break;
+	default:
+		state = 0;
+		break;
+	}
+}
+
+int8_t esp8266_ScanChannels(char *buf, uint8_t *id) 
+{
+	for (uint8_t i = 0; i < 5; i++) {
+		if (strlen(esp8266_Channels.to_load[i])) {
+			*id = i;
+			strcpy(buf, esp8266_Channels.to_load[i]);
+			memset(esp8266_Channels.to_load[i], 0, 32);
+			return 0;
+		}
+	}
+	return -1;
 }

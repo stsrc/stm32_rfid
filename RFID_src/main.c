@@ -162,7 +162,7 @@ int main(void)
 	ret = esp8266_MakeAsServer();
 	CheckError("esp8266_MakeAsServer failed!\0", ret);
 	while(1) {
-		ret = esp8266_ScanForData(buf, &id);
+		ret = esp8266_ScanChannels(buf, &id);
 		if (!ret) {
 			TM_ILI9341_DrawFilledRectangle(0, 100, 239, 319, ILI9341_COLOR_BLACK);
 			LcdWrite(buf, 0, 100);

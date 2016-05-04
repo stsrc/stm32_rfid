@@ -10,6 +10,7 @@
 #include "tm_stm32f1_ili9341.h"
 #include "RFID.h"
 #include "simple_buffer.h"
+#include "esp8266.h"
 
 HAL_StatusTypeDef UART_1_init();
 HAL_StatusTypeDef UART_2_init();

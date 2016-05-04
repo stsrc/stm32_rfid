@@ -23,4 +23,7 @@ int8_t esp8266_GetIp(char *buf);
 int8_t esp8266_ScanForData(char *buf, uint8_t *id);
 int8_t esp8266_MakeAsServer();
 int8_t esp8266_WritePage(char *buf, size_t data_size, uint8_t id, uint8_t close);
+int8_t esp8266_ScanChannels(char *buf, uint8_t *id);
+
+void esp8266_ReceiveIRQHandler(uint8_t byte);
 #endif
