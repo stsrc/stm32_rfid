@@ -101,7 +101,10 @@ static void SPI_handler_basic_init(SPI_HandleTypeDef *spi_handler,
 	spi_handler->Init.CLKPolarity = SPI_POLARITY_LOW;
 	spi_handler->Init.CLKPhase = SPI_PHASE_1EDGE;
 	spi_handler->Init.NSS = SPI_NSS_SOFT;
-	spi_handler->Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
+	if (inst == SPI1)
+		spi_handler->Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
+	else
+		spi_handler->Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
 	spi_handler->Init.FirstBit = SPI_FIRSTBIT_MSB;
 	spi_handler->Init.TIMode = SPI_TIMODE_DISABLE;
 	spi_handler->Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -205,9 +208,11 @@ HAL_StatusTypeDef SPI_2_init(void)
 
 HAL_StatusTypeDef SPI_2_write(uint8_t *data)
 {
-	HAL_StatusTypeDef rt;
+	HAL_StatusTypeDef rt = 0;
 	SPI_wait_for_EOT(&spi_2_handler);
-	rt = HAL_SPI_Transmit(&spi_2_handler, data, 1, 0xFFFF); 
+	do
+		rt = HAL_SPI_Transmit(&spi_2_handler, data, 1, 0xFFFF); 
+	while ((rt == HAL_TIMEOUT) || (rt == HAL_BUSY));
 	return rt;
 }
 
@@ -215,7 +220,12 @@ HAL_StatusTypeDef SPI_2_read(uint8_t *data, uint16_t bytes)
 {
 	HAL_StatusTypeDef rt;
 	SPI_wait_for_EOT(&spi_2_handler);
-	rt = HAL_SPI_Receive(&spi_2_handler, data, bytes, 0xFFFF);
+	//rt = HAL_SPI_Receive(&spi_2_handler, data, bytes, 0xFFFF);
+	SPI2->DR = 0xff;
+	SPI_wait_for_EOT(&spi_2_handler);
+	while(!(SPI2->SR & SPI_SR_RXNE));
+	*data = SPI2->DR;	
+	rt = HAL_OK;
 	return rt;
 }
 

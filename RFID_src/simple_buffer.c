@@ -125,6 +125,14 @@ int8_t buffer_IsFull(struct simple_buffer *buf)
 		return 0;
 }
 
+int8_t buffer_IsEmpty(struct simple_buffer *buf)
+{
+	if (buf->tail == buf->head)
+		return 0;
+	return
+		-EINVAL;
+}
+
 int8_t buffer_MoveTailToLabel(struct simple_buffer *buf, const char *label)
 {
 	uint8_t byte;

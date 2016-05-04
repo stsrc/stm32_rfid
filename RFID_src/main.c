@@ -69,8 +69,6 @@ int8_t UpdateTime()
 	return ret;
 }
 
-
-
 void GetIp(char *buf)
 {
 	int8_t ret;
@@ -80,11 +78,64 @@ void GetIp(char *buf)
 	LcdWrite(buf, 0, 40);	
 }
 
+int8_t FATFS_Init(FATFS *SDFatFs, char *path)
+{
+	int8_t ret;
+	ret = FATFS_LinkDriver((Diskio_drvTypeDef *)&SD_Driver, path);
+	if (ret)
+		return -1;
+	ret = f_mount(SDFatFs, path, 1);
+	if (ret)
+		return -2;
+	return 0;
+}
+
+int8_t WritePage(char *buf, uint8_t id)
+{
+	FIL html_file;
+	size_t bytes_read;
+	size_t file_size;
+	int8_t ret = f_open(&html_file, buf, FA_OPEN_EXISTING | FA_READ);
+	LcdWrite("f_open", 0, 120);
+	if (ret)
+		return -1;
+	file_size = f_size(&html_file);
+	LcdWrite("f_size", 0, 140);
+	while(file_size > BUF_MEM_SIZE - 1) {
+		memset(buf, 0, BUF_MEM_SIZE);
+		ret = f_read(&html_file, buf, BUF_MEM_SIZE - 1, (UINT *)&bytes_read);
+		if (ret)
+			return -2;
+		file_size -= bytes_read;
+		ret = esp8266_WritePage(buf, id, 0);
+		if (ret)
+			return -3;
+	}
+	memset(buf, 0, BUF_MEM_SIZE);
+	ret = f_read(&html_file, buf, file_size, (UINT *)&bytes_read);
+	LcdWrite("f_read", 0, 160);
+	if (ret)
+		return -3;
+	ret = esp8266_WritePage(buf, id, 1);
+	LcdWrite("esp8266_WritePage", 0, 200);
+	if (ret)
+		return -4;
+	ret = f_close(&html_file);
+	LcdWrite("f_close", 0, 220);
+	if (ret)
+		return -5;
+	LcdWrite("return", 0, 240);
+	return 0;
+}
+
+FATFS SDFatFs;
 int main(void)
 {
 	int ret;
 	char buf[BUF_MEM_SIZE];
+	char org[5];
 	uint8_t id;
+	memset(org, 0, 5);
 	SetInterrupts();
 	set_leds();
 	TM_ILI9341_Init();
@@ -92,6 +143,8 @@ int main(void)
 	xpt2046_init();
 	RFID_Init();
 	RTC_Init();
+	ret = FATFS_Init(&SDFatFs, org);
+	CheckError("FATFS initalization failed!\0", ret);
 	ret = esp8266_Init(buf);
 	CheckError("esp8266 initalization failed!\0", ret);
 	UpdateTime();
@@ -104,12 +157,14 @@ int main(void)
 		if (!ret) {
 			TM_ILI9341_DrawFilledRectangle(0, 100, 239, 319, ILI9341_COLOR_BLACK);
 			LcdWrite(buf, 0, 100);
-			ret = esp8266_WritePage(NULL, id, 1);
+			if (!strlen(buf))
+				strcpy(buf, "index.html\0");
+			ret = WritePage(buf, id);
 			if (ret)
 				LcdWrite("Problem with WritePage\0", 0, 300);
 		}
 		PrintTime();
-		delay_ms(2000);		
+		delay_ms(1000);		
 	}
 	return 0;
 }

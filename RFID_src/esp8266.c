@@ -12,12 +12,10 @@
 #define AT_CIPMODE_0		"AT+CIPMODE=0\r\n\0"
 #define AT_CIPMUX_1		"AT+CIPMUX=1\r\n\0"
 #define AT_CIPSERVER		"AT+CIPSERVER=1,80\r\n\0"
-#define AT_CIPSTO		"AT+CIPSTO=30\r\n\0"
+#define AT_CIPSTO		"AT+CIPSTO=115\r\n\0"
 #define AT_CIFSR		"AT+CIFSR\r\n\0"
 #define AT_CIPSEND		"AT+CIPSEND=\0"
 #define AT_CLOSE_SOCKET		"AT+CIPCLOSE=\0"
-
-static char * buf = NULL;
 
 void esp8266_InitPins() 
 {
@@ -43,6 +41,7 @@ void esp8266_HardReset()
 int8_t esp8266_WaitForOk(const char *command, unsigned int delay, uint8_t multiplier) 
 {
 	int8_t ret;
+	char buf[BUF_MEM_SIZE];
 	ret = esp8266_GetReply(command, "OK\0", buf, delay, multiplier);
 	return ret;	
 }
@@ -99,7 +98,6 @@ int8_t esp8266_Init(char *global_buf)
 {
 	int8_t ret;
 	const char * const RST_CMD = AT_RESET_CMD;
-	buf = global_buf;
 	esp8266_InitPins();
 	esp8266_HardReset();
 	UART_2_init();
@@ -168,6 +166,7 @@ int8_t esp8266_GetTime(uint8_t *hour, uint8_t *minute, uint8_t *second)
 	char *http_command = "AT+CIPSEND=19\r\n\0";
 	char *http_data = "HEAD / HTTP/1.1\r\n\r\n\0";
 	int8_t ret = 0;
+	char buf[BUF_MEM_SIZE];
 	memset(buf, 0, BUF_MEM_SIZE);
 	esp8266_Send(http_connect);
 	ret = esp8266_WaitForOk(http_connect, 100, 100);
@@ -194,17 +193,18 @@ int8_t esp8266_GetTime(uint8_t *hour, uint8_t *minute, uint8_t *second)
 static inline int8_t esp8266_WriteATCIPSEND(uint8_t id, char *data) 
 {
 	unsigned int data_len = (unsigned int)strlen(data);
-	char temp[10];
+	char temp[32];
+	char temp_2[16];
 	int ret;
-	memset(buf, 0, BUF_MEM_SIZE);
-	memset(temp, 0, sizeof(temp));
-	sprintf(temp, "%u,%u\r\n", (unsigned int)id, data_len);
-	strcpy(buf, AT_CIPSEND);
-	strcat(buf, temp);
-	ret = esp8266_Send(buf);
+	memset(temp, 0, 32);
+	memset(temp_2, 0, 16);
+	sprintf(temp_2, "%u,%u\r\n", (unsigned int)id, data_len); //TODO BUF OVERFLOW
+	strcpy(temp, AT_CIPSEND);
+	strcat(temp, temp_2);
+	ret = esp8266_Send(temp);
 	if (ret)
 		return -1;
-	ret = esp8266_WaitForOk(buf, 100, 100);
+	ret = esp8266_WaitForOk(temp, 100, 100);
 	if (ret)
 		return -2;
 	ret = esp8266_Send(data);
@@ -226,7 +226,7 @@ static inline int8_t esp8266_WriteATCIPCLOSE(uint8_t id)
 	ret = esp8266_Send(buf);
 	if (ret)
 		return -1;
-	ret = esp8266_WaitForOk(buf, 100, 100);
+	ret = esp8266_WaitForOk(buf, 100, 100); //TODO BUF OBERFLOW
 	if (ret)
 		return -2;
 	return ret;
@@ -235,8 +235,7 @@ static inline int8_t esp8266_WriteATCIPCLOSE(uint8_t id)
 int8_t esp8266_WritePage(char *buf, uint8_t id, uint8_t close)
 {
 	int8_t ret;
-	char *http_data = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE HTML>\r\n<html>\r\nHello web world</html>\r\n\r\n\r\n\0";
-	ret = esp8266_WriteATCIPSEND(id, http_data);
+	ret = esp8266_WriteATCIPSEND(id, buf);
 	if (ret)
 		return ret;
 	esp8266_WaitForOk("SEND\0", 100, 100);
