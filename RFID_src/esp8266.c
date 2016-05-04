@@ -49,15 +49,15 @@ int8_t esp8266_WaitForOk(const char *command, unsigned int delay, uint8_t multip
 static int8_t esp8266_ConnectToWiFi()
 {
 	int ret;
-	esp8266_Send(AT_CWMODE_1);	
+	esp8266_Send(AT_CWMODE_1, strlen(AT_CWMODE_1));	
 	ret = esp8266_WaitForOk(AT_CWMODE_1, 100, 100);
 	if (ret)
 		return -1;
-	esp8266_Send(WIFI_PASSWD_SECRET);
+	esp8266_Send(WIFI_PASSWD_SECRET, strlen(WIFI_PASSWD_SECRET));
 	ret = esp8266_WaitForOk(WIFI_PASSWD_SECRET, 100, 100);
 	if (ret)
 		return -2;
-	esp8266_Send(AT_PING_GOOGLE);
+	esp8266_Send(AT_PING_GOOGLE, strlen(AT_PING_GOOGLE));
 	ret = esp8266_WaitForOk(AT_PING_GOOGLE, 100, 100);
 	if (ret)
 		return -3;
@@ -67,25 +67,25 @@ static int8_t esp8266_ConnectToWiFi()
 int8_t esp8266_MakeAsServer()
 {
 	int8_t ret;
-	ret = esp8266_Send(AT_CIPMODE_0);
+	ret = esp8266_Send(AT_CIPMODE_0, strlen(AT_CIPMODE_0));
 	if (ret)
 		return -1;
 	ret = esp8266_WaitForOk(AT_CIPMODE_0, 100, 100);
 	if (ret)
 		return -2;
-	ret = esp8266_Send(AT_CIPMUX_1);
+	ret = esp8266_Send(AT_CIPMUX_1, strlen(AT_CIPMUX_1));
 	if (ret)
 		return -3;
 	ret = esp8266_WaitForOk(AT_CIPMUX_1, 100, 100);
 	if (ret)
 		return -4;
-	ret = esp8266_Send(AT_CIPSERVER);
+	ret = esp8266_Send(AT_CIPSERVER, strlen(AT_CIPSERVER));
 	if (ret)
 		return -5;
 	ret = esp8266_WaitForOk(AT_CIPSERVER, 100, 100);
 	if (ret)
 		return -6;
-	ret = esp8266_Send(AT_CIPSTO);
+	ret = esp8266_Send(AT_CIPSTO, strlen(AT_CIPSTO));
 	if (ret)
 		return -7;
 	ret = esp8266_WaitForOk(AT_CIPSTO, 100, 100);
@@ -103,7 +103,7 @@ int8_t esp8266_Init(char *global_buf)
 	UART_2_init();
 	buffer_Reset(&UART2_transmit_buffer);
 	delay_ms(5000);
-	esp8266_Send(RST_CMD);
+	esp8266_Send(RST_CMD, strlen(RST_CMD));
 	delay_ms(5000);
 	buffer_Reset(&UART2_receive_buffer);
 	ret = esp8266_ConnectToWiFi();
@@ -112,10 +112,10 @@ int8_t esp8266_Init(char *global_buf)
 	return 0;
 }
 
-int8_t esp8266_Send(const char *data) 
+int8_t esp8266_Send(const char *data, size_t data_size) 
 {
 	int8_t ret;
-	ret = buffer_set_text(&UART2_transmit_buffer, data);
+	ret = buffer_set_text(&UART2_transmit_buffer, data, data_size);
 	if (!ret)
 		UART_2_transmit();
 	return ret;
@@ -129,7 +129,7 @@ int8_t esp8266_SendGetReply(const char *command, const char *delimiter,
 	if (buffer_IsFull(&UART2_transmit_buffer))
 		return -ENOMEM;
 	buffer_Reset(&UART2_receive_buffer);		
-	esp8266_Send(command);
+	esp8266_Send(command, strlen(command));
 	ret = esp8266_GetReply(command, delimiter, output, delay, multiplier);	
 	return ret;
 }
@@ -168,46 +168,45 @@ int8_t esp8266_GetTime(uint8_t *hour, uint8_t *minute, uint8_t *second)
 	int8_t ret = 0;
 	char buf[BUF_MEM_SIZE];
 	memset(buf, 0, BUF_MEM_SIZE);
-	esp8266_Send(http_connect);
+	esp8266_Send(http_connect, strlen(http_connect));
 	ret = esp8266_WaitForOk(http_connect, 100, 100);
 	if (ret)
 		return -1;
-	esp8266_Send(http_command);
+	esp8266_Send(http_command, strlen(http_command));
 	ret = esp8266_WaitForOk(http_command, 100, 100);
 	if (ret) 
 		return -2;
-	esp8266_Send(http_data);
+	esp8266_Send(http_data, strlen(http_data));
 	delay_ms(2000);
 	ret = buffer_SearchGetLabel(&UART2_receive_buffer, "Date: \0", " GMT\0", buf);
 	if (ret)
 		return -3;
 	ParseTime(hour, minute, second, buf);
 	buffer_Reset(&UART2_receive_buffer);
-	esp8266_Send(http_disconnect);
+	esp8266_Send(http_disconnect, strlen(http_disconnect));
 	ret = esp8266_WaitForOk(http_disconnect, 100, 100);
 	if (ret)
 		return -4;
 	return 0;
 }
 
-static inline int8_t esp8266_WriteATCIPSEND(uint8_t id, char *data) 
+static inline int8_t esp8266_WriteATCIPSEND(char *data, size_t data_size, uint8_t id) 
 {
-	unsigned int data_len = (unsigned int)strlen(data);
 	char temp[32];
 	char temp_2[16];
 	int ret;
 	memset(temp, 0, 32);
 	memset(temp_2, 0, 16);
-	sprintf(temp_2, "%u,%u\r\n", (unsigned int)id, data_len); //TODO BUF OVERFLOW
+	sprintf(temp_2, "%u,%u\r\n", (unsigned int)id, (unsigned int)data_size); //TODO BUF OVERFLOW
 	strcpy(temp, AT_CIPSEND);
 	strcat(temp, temp_2);
-	ret = esp8266_Send(temp);
+	ret = esp8266_Send(temp, strlen(temp));
 	if (ret)
 		return -1;
 	ret = esp8266_WaitForOk(temp, 100, 100);
 	if (ret)
 		return -2;
-	ret = esp8266_Send(data);
+	ret = esp8266_Send(data, data_size);
 	if (ret)
 		return -3;
 	return 0;
@@ -223,7 +222,7 @@ static inline int8_t esp8266_WriteATCIPCLOSE(uint8_t id)
 	sprintf(temp, "%u\r\n", id);
 	strcpy(buf, AT_CLOSE_SOCKET);
 	strcat(buf, temp);
-	ret = esp8266_Send(buf);
+	ret = esp8266_Send(buf, strlen(buf));
 	if (ret)
 		return -1;
 	ret = esp8266_WaitForOk(buf, 100, 100); //TODO BUF OBERFLOW
@@ -232,16 +231,21 @@ static inline int8_t esp8266_WriteATCIPCLOSE(uint8_t id)
 	return ret;
 }
 
-int8_t esp8266_WritePage(char *buf, uint8_t id, uint8_t close)
+int8_t esp8266_WritePage(char *buf, size_t data_size, uint8_t id, uint8_t close)
 {
 	int8_t ret;
-	ret = esp8266_WriteATCIPSEND(id, buf);
+	ret = esp8266_WriteATCIPSEND(buf, data_size, id);
 	if (ret)
-		return ret;
-	esp8266_WaitForOk("SEND\0", 100, 100);
-	if (close)
+		return -1;
+	ret = esp8266_WaitForOk("SEND\0", 100, 100);
+	if (ret)
+		return -2;
+	if (close) {
 		ret = esp8266_WriteATCIPCLOSE(id);
-	return ret;	
+		if (ret)
+			return -3;
+	}
+	return 0;	
 }
 
 inline int8_t esp8266_GetIp(char *buf)

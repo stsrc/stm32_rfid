@@ -87,14 +87,14 @@ int8_t FATFS_Init(FATFS *SDFatFs, char *path)
 	ret = f_mount(SDFatFs, path, 1);
 	if (ret)
 		return -2;
-	return 0;
+	return ret;
 }
 
 int8_t WritePage(char *buf, uint8_t id)
 {
 	FIL html_file;
 	size_t bytes_read;
-	size_t file_size;
+	volatile size_t file_size = 0;
 	int8_t ret = f_open(&html_file, buf, FA_OPEN_EXISTING | FA_READ);
 	LcdWrite("f_open", 0, 120);
 	if (ret)
@@ -103,23 +103,32 @@ int8_t WritePage(char *buf, uint8_t id)
 	LcdWrite("f_size", 0, 140);
 	while(file_size > BUF_MEM_SIZE - 1) {
 		memset(buf, 0, BUF_MEM_SIZE);
-		ret = f_read(&html_file, buf, BUF_MEM_SIZE - 1, (UINT *)&bytes_read);
-		if (ret)
+		ret = f_read(&html_file, buf, BUF_MEM_SIZE - 1, 
+			     (UINT *)&bytes_read);
+		if (ret) {
+			f_close(&html_file);
 			return -2;
+		}
 		file_size -= bytes_read;
-		ret = esp8266_WritePage(buf, id, 0);
-		if (ret)
+		ret = esp8266_WritePage(buf, bytes_read, id, 0);
+		if (ret) {
+			f_close(&html_file);
 			return -3;
+		}
 	}
 	memset(buf, 0, BUF_MEM_SIZE);
 	ret = f_read(&html_file, buf, file_size, (UINT *)&bytes_read);
 	LcdWrite("f_read", 0, 160);
-	if (ret)
+	if (ret) {
+		f_close(&html_file);
 		return -3;
-	ret = esp8266_WritePage(buf, id, 1);
+	}
+	ret = esp8266_WritePage(buf, file_size, id, 1);
 	LcdWrite("esp8266_WritePage", 0, 200);
-	if (ret)
+	if (ret) {
+		f_close(&html_file);
 		return -4;
+	}
 	ret = f_close(&html_file);
 	LcdWrite("f_close", 0, 220);
 	if (ret)

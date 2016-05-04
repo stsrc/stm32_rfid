@@ -10,7 +10,7 @@
 void esp8266_InitPins(); 
 void esp8266_HardReset();
 int8_t esp8266_Init(); 
-int8_t esp8266_Send(const char *command);
+int8_t esp8266_Send(const char *command, size_t data_size);
 int8_t esp8266_SendGetReply(const char *command, const char *delimiter, 
 			    char *output, unsigned int delay,
 			    uint8_t multiplier);
@@ -22,5 +22,5 @@ int8_t esp8266_GetTime(uint8_t *hour, uint8_t *minute, uint8_t *second);
 int8_t esp8266_GetIp(char *buf);
 int8_t esp8266_ScanForData(char *buf, uint8_t *id);
 int8_t esp8266_MakeAsServer();
-int8_t esp8266_WritePage(char *buf, uint8_t id, uint8_t close);
+int8_t esp8266_WritePage(char *buf, size_t data_size, uint8_t id, uint8_t close);
 #endif

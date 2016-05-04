@@ -97,18 +97,18 @@ int8_t buffer_set_byte(struct simple_buffer* buf, uint8_t byte)
 }	
 
 /*ret equals to what if not = 0?*/
-int8_t buffer_set_text(struct simple_buffer *buf, const char *text) 
+int8_t buffer_set_text(struct simple_buffer *buf, const char *text, 
+		       size_t data_size) 
 {
 	int8_t ret = 0;
-	size_t len = strlen(text);
 	if (buf->head >= buf->tail) {
-		if (len >= BUF_MEM_SIZE - (buf->head - buf->tail)) 
+		if (data_size >= BUF_MEM_SIZE - (buf->head - buf->tail)) 
 			return -ENOMEM;
 	} else if (buf-> head < buf->tail) {
-		if (len >= BUF_MEM_SIZE - (buf->tail - buf->head))
+		if (data_size >= BUF_MEM_SIZE - (buf->tail - buf->head))
 			return -ENOMEM;
 	}
-	for (size_t i = 0; i < len; i++) {
+	for (size_t i = 0; i < data_size; i++) {
 		ret = buffer_set_byte(buf, text[i]);
 		if (ret)
 			break;
