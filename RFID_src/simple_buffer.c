@@ -82,6 +82,11 @@ static inline void buffer_ClearLock(struct simple_buffer *buf)
 	buf->lock &= ~1;
 }	
 
+static inline int8_t buffer_IsLocked(struct simple_buffer *buf)
+{
+	return buf->lock & 1;
+}
+
 int8_t buffer_set_byte(struct simple_buffer* buf, uint8_t byte)
 {
 	int8_t ret = 0;
@@ -165,6 +170,8 @@ int8_t buffer_SearchGetLabel(struct simple_buffer *buf, const char *label,
 {	
 	int8_t ret;
 	size_t tail_old;
+	if (buffer_IsLocked(buf))
+		return -1;
 	buffer_SetLock(buf);
 	tail_old = buf->tail;
 	ret = buffer_MoveTailToLabel(buf, label);

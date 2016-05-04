@@ -333,7 +333,6 @@ void esp8266_ReceiveIRQHandler(uint8_t byte)
 
 	switch(state) {
 	case 1:
-		memset(buf, 0, BUF_MEM_SIZE);
 		ret = esp8266_ScanForData(buf, &id);
 		if (ret)
 			return;
