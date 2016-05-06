@@ -12,18 +12,11 @@
 #define AT_CIPMODE_0		"AT+CIPMODE=0\r\n\0"
 #define AT_CIPMUX_1		"AT+CIPMUX=1\r\n\0"
 #define AT_CIPSERVER		"AT+CIPSERVER=1,80\r\n\0"
-#define AT_CIPSTO		"AT+CIPSTO=115\r\n\0"
+#define AT_CIPSTO		"AT+CIPSTO=7000\r\n\0"
 #define AT_CIFSR		"AT+CIFSR\r\n\0"
 #define AT_CIPSEND		"AT+CIPSEND=\0"
 #define AT_CLOSE_SOCKET		"AT+CIPCLOSE=\0"
 
-
-
-struct esp8266_channels_state {
-	char to_load[5][32];
-};
-static __IO uint8_t do_it = 0;
-static struct esp8266_channels_state esp8266_Channels;
 
 void esp8266_InitPins() 
 {
@@ -99,7 +92,7 @@ int8_t esp8266_MakeAsServer()
 	ret = esp8266_WaitForOk(AT_CIPSTO, 100, 100);
 	if (ret)
 		return -8;
-	do_it = 1;
+
 	return 0;
 }
 
@@ -114,7 +107,6 @@ int8_t esp8266_Init(char *global_buf)
 	delay_ms(5000);
 	esp8266_Send(RST_CMD, strlen(RST_CMD));
 	delay_ms(5000);
-	memset(&esp8266_Channels, 0, sizeof(struct esp8266_channels_state));
 	buffer_Reset(&UART2_receive_buffer);
 	ret = esp8266_ConnectToWiFi();
 	if (ret)
@@ -219,6 +211,9 @@ static inline int8_t esp8266_WriteATCIPSEND(char *data, size_t data_size, uint8_
 	ret = esp8266_Send(data, data_size);
 	if (ret)
 		return -3;
+	ret = esp8266_WaitForOk("SEND\0", 100, 100);
+	if (ret)
+		return -4;
 	return 0;
 }
 
@@ -247,13 +242,10 @@ int8_t esp8266_WritePage(char *buf, size_t data_size, uint8_t id, uint8_t close)
 	ret = esp8266_WriteATCIPSEND(buf, data_size, id);
 	if (ret)
 		return -1;
-	ret = esp8266_WaitForOk("SEND\0", 100, 100);
-	if (ret)
-		return -2;
 	if (close) {
 		ret = esp8266_WriteATCIPCLOSE(id);
 		if (ret)
-			return -3;
+			return -2;
 	}
 	return 0;	
 }
@@ -264,96 +256,156 @@ inline int8_t esp8266_GetIp(char *buf)
 	return esp8266_SendGetReply(AT_CIFSR, "OK\0", buf, 100, 10);
 }
 
-int8_t esp8266_ScanForData(char *buf, uint8_t *id)
+int8_t esp8266_ScanForGET(char *file, uint8_t *id)
 {
 	int8_t ret;
 	uint16_t temp_id, temp_len;
 	char *temp_buf;
-	memset(buf, 0, BUF_MEM_SIZE);
+	memset(file, 0, BUF_MEM_SIZE);
 	ret = buffer_SearchGetLabel(&UART2_receive_buffer, "+IPD,\0", 
-				    "HTTP/\0", buf);
+				    "HTTP/\0", file);
 	if (ret) 
 		return -1;
-	temp_buf = malloc(strlen(buf) + 1);
+	temp_buf = malloc(strlen(file) + 1);
 	if (!temp_buf)
 		return -2;
-	memset(temp_buf, 0, strlen(buf) + 1);
-	buffer_Reset(&UART2_receive_buffer);
-	sscanf(buf, "%hu,%hu:GET /%s ", &temp_id, &temp_len, temp_buf);
-	strcpy(buf, temp_buf);
+	memset(temp_buf, 0, strlen(file) + 1);
+	sscanf(file, "%hu,%hu:GET /%s ", &temp_id, &temp_len, temp_buf);
+	buffer_SetIgnore(&UART2_receive_buffer, temp_len - (strlen("GET /") 
+			 + strlen(temp_buf) + strlen(" HTTP/")));
+	strcpy(file, temp_buf);
 	free(temp_buf);
 	*id = temp_id;
 	return 0;
 }
 
-void esp8266_ReceiveIRQHandler(uint8_t byte)
-{
-	static size_t cnt = 0;
-	static uint8_t state = 0;
-	int8_t ret;
-	uint8_t id;
-	char buf[BUF_MEM_SIZE]; //DANGER!!!
-	if (!do_it)
-		return;
-	
-	if (!state) {
-	switch(cnt) {
-	case 0:
-		if (byte == '+')
-			cnt = 1;
-		break;
-	case 1:
-		if (byte == 'I')
-			cnt = 2;
-		else
-			cnt = 0;
-		break;
-	case 2:
-		if (byte == 'P')
-			cnt = 3;
-		else
-			cnt = 0;
-		break;
-	case 3:
-		if (byte == 'D')
-			cnt = 4;
-		else
-			cnt = 0;
-		break;
-	case 4:
-		if (byte == ',') {
-			state = 1;
-			cnt = 0;
-		} else { 
-			state = 0;
-			cnt = 0;
-		}
-	}
-	}
+struct channel_data {
+	char buf[5][32];
+	char ready[5];
+};
 
-	switch(state) {
-	case 1:
-		ret = esp8266_ScanForData(buf, &id);
-		if (ret)
-			return;
-		strncpy(esp8266_Channels.to_load[id], buf, 32);
-		state = 0;
-		break;
-	default:
-		state = 0;
-		break;
-	}
-}
 
-int8_t esp8266_ScanChannels(char *buf, uint8_t *id) 
+
+static struct channel_data chn_data;
+static uint8_t do_it = 0;
+int8_t esp8266_ScanForFile(char *file, uint8_t *id)
 {
-	for (uint8_t i = 0; i < 5; i++) {
-		if (strlen(esp8266_Channels.to_load[i])) {
+	do_it = 1;
+	for (size_t i = 0; i < 5; i++) {
+		if (chn_data.ready[i]) {
+			strncpy(file, chn_data.buf[i], 32);
+			memset(chn_data.buf[i], 0, 32);
+			chn_data.ready[i] = 0;
 			*id = i;
-			strcpy(buf, esp8266_Channels.to_load[i]);
-			memset(esp8266_Channels.to_load[i], 0, 32);
 			return 0;
 		}
 	}
-	return -1;
+	return -EINVAL;	
+}
+
+int8_t CheckInput(uint8_t data)
+{
+	static char buffer[20];
+	for(size_t i = 0; i < 18; i++)
+		buffer[i] = buffer[i+1];
+	if(!strncmp(buffer, "reset", 5))
+		return 1;
+	else if(!strncmp(buffer, "+IPD", 4))
+		return 2;
+	return 0;
+}
+
+void esp8266_CheckInput(uint8_t data)
+{
+	static uint8_t state = 0;
+	static uint16_t id = 0;
+	static uint16_t len = 0;
+	static char buf[50];
+	static uint8_t cnt = 0;
+	if (!do_it)
+		return;
+	switch(state){
+	case 0:
+		len = 0;
+		id = 0;
+		cnt = 0;
+		memset(buf, 0, 50);
+		if (data == '+')
+			state = 1;
+		break;
+	case 1:
+		if (data == 'I')
+			state = 2;
+		else
+			state = 0;
+		break;
+	case 2:
+		if (data == 'P')
+			state = 3;
+		else 
+			state = 0;
+		break;
+	case 3:
+		if (data == 'D')
+			state = 4;
+		else 
+			state = 0;
+		break;
+	case 4:
+		if (data == ',')
+			state = 5;
+		else
+			state = 0;
+		break;
+	case 5:
+		id = data - 48;
+		state = 6;
+		break;
+	case 6:
+		if (data == ',')
+			state = 7;
+		else
+			state = 0;
+		break;
+	case 7:	
+		if (data != ':') {
+			buf[cnt] = data;
+			cnt++;
+		} else {
+			sscanf(buf, "%hu", &len);
+			state = 8;
+			buffer_SetIgnore(&UART2_receive_buffer, len);
+			cnt = 0;
+			memset(buf, 0, 50);
+		}
+		break;
+	case 8:
+		len--;
+		if (data == ' ')
+			state = 9;
+		break;
+	case 9:
+		len--;
+		if(data == ' ') {
+			state = 10;
+		} else {
+			buf[cnt] = data;
+			cnt++;
+		}
+		break;
+	case 10:
+		len--;
+		strncpy(chn_data.buf[id], buf, 31);
+		state = 11;
+		break;
+	case 11:
+		len--;
+		if (len == 0) {
+			state = 0;
+			chn_data.ready[id] = 1;
+		}
+	       break;	
+	default:
+		break;
+	}	
 }

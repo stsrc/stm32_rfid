@@ -57,6 +57,8 @@ static inline int8_t buffer_ClearTempBuf(struct simple_buffer *buf)
 		if (ret)
 			break;
 	}
+	buf->lock = 0;
+	memset(buf->temp, 0, TEMP_MEM_SIZE);
 	return ret;
 }
 
@@ -87,18 +89,42 @@ static inline int8_t buffer_IsLocked(struct simple_buffer *buf)
 	return buf->lock & 1;
 }
 
+int8_t buffer_CheckIgnore(struct simple_buffer* buf)
+{
+	if (buf->head >= buf->tail) {
+		if (buf->ignore > buf->head - buf->tail)
+			return -EBUSY;
+		else {
+			buf->ignore = 0;
+			return 0;
+		}
+	} else if (buf->head < buf->tail) {
+		if (buf->ignore > buf->tail - buf->head)
+			return -EBUSY;
+		else {
+			buf->ignore = 0;
+			return 0;
+		}
+	}
+	return -EINVAL;
+}
+
 int8_t buffer_set_byte(struct simple_buffer* buf, uint8_t byte)
 {
 	int8_t ret = 0;
-	if (buffer_CheckLockFlag(buf)) {
+	if ((ret = buffer_CheckIgnore(buf)) != 0) {
+		buf->ignore--;
+		return ret;
+	} else if (buffer_CheckLockFlag(buf)) {
 		ret = buffer_PushTempBuf(buf, byte);
+		return ret;
 	} else {
 		ret = buffer_ClearTempBuf(buf);
 		if (ret)
 			return ret;
 		ret = buffer_PushBuf(buf, byte);
+		return ret;
 	}
-	return ret;
 }	
 
 /*ret equals to what if not = 0?*/
@@ -241,4 +267,9 @@ void buffer_CopyTillHead(struct simple_buffer *buf, char *output)
 	uint8_t byte;
 	while(!buffer_get_byte(buf, &byte))
 		*output++ = byte;
+}
+
+inline void buffer_SetIgnore(struct simple_buffer *buf, size_t ignore)
+{
+	buf->ignore = ignore;
 }

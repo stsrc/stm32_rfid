@@ -90,50 +90,82 @@ int8_t FATFS_Init(FATFS *SDFatFs, char *path)
 	return ret;
 }
 
-int8_t WritePage(char *buf, uint8_t id)
+int8_t WiFi_Init()
 {
+	int ret = 0;
+	const size_t max = 3;
+	for (size_t i = 0; i < max; i++) {
+		ret = esp8266_Init();
+		if (!ret) {
+			break;
+		} else if (i != max - 1) {
+			LcdWrite("Problems with esp8266 \ninitalization.\nRetrying in 3 sec.", 0, 0);
+			delay_ms(3000);
+			TM_ILI9341_DrawFilledRectangle(0, 0, 239, 50, ILI9341_COLOR_BLACK);	
+		}
+	}
+	return ret;
+}
+
+int8_t WritePage(char *buf)
+{
+	uint8_t id;
+	int8_t ret;
 	FIL html_file;
 	size_t bytes_read;
 	volatile size_t file_size = 0;
-	int8_t ret = f_open(&html_file, buf, FA_OPEN_EXISTING | FA_READ);
-	LcdWrite("f_open", 0, 120);
+
+	ret = esp8266_ScanForFile(buf, &id);
+	if (ret)
+		return 0;
+	
+	if (!strlen(buf))
+		strcpy(buf, "index.html");
+	
+	f_open(&html_file, buf, FA_OPEN_EXISTING | FA_READ);
 	if (ret)
 		return -1;
+	
 	file_size = f_size(&html_file);
-	LcdWrite("f_size", 0, 140);
+
 	while(file_size > BUF_MEM_SIZE - 1) {
+	
 		memset(buf, 0, BUF_MEM_SIZE);
+	
 		ret = f_read(&html_file, buf, BUF_MEM_SIZE - 1, 
 			     (UINT *)&bytes_read);
 		if (ret) {
 			f_close(&html_file);
 			return -2;
 		}
+	
 		file_size -= bytes_read;
 		ret = esp8266_WritePage(buf, bytes_read, id, 0);
 		if (ret) {
 			f_close(&html_file);
 			return -3;
 		}
+
 	}
+
 	memset(buf, 0, BUF_MEM_SIZE);
+	
 	ret = f_read(&html_file, buf, file_size, (UINT *)&bytes_read);
-	LcdWrite("f_read", 0, 160);
-	if (ret) {
-		f_close(&html_file);
-		return -3;
-	}
-	ret = esp8266_WritePage(buf, file_size, id, 1);
-	LcdWrite("esp8266_WritePage", 0, 200);
 	if (ret) {
 		f_close(&html_file);
 		return -4;
 	}
-	ret = f_close(&html_file);
-	LcdWrite("f_close", 0, 220);
-	if (ret)
+
+	ret = esp8266_WritePage(buf, file_size, id, 1);
+	if (ret) {
+		f_close(&html_file);
 		return -5;
-	LcdWrite("return", 0, 240);
+	}
+
+	ret = f_close(&html_file);
+	if (ret)
+		return -6;
+
 	return 0;
 }
 
@@ -143,7 +175,7 @@ int main(void)
 	int ret;
 	char buf[BUF_MEM_SIZE];
 	char org[5];
-	uint8_t id;
+
 	memset(org, 0, 5);
 	SetInterrupts();
 	set_leds();
@@ -154,26 +186,17 @@ int main(void)
 	RTC_Init();
 	ret = FATFS_Init(&SDFatFs, org);
 	CheckError("FATFS initalization failed!\0", ret);
-	ret = esp8266_Init(buf);
-	CheckError("esp8266 initalization failed!\0", ret);
+	ret = WiFi_Init();
+	CheckError("Can not connect to WiFi!\0", ret);
 	UpdateTime();
 	PrintTime();
 	GetIp(buf);
 	ret = esp8266_MakeAsServer();
 	CheckError("esp8266_MakeAsServer failed!\0", ret);
 	while(1) {
-		ret = esp8266_ScanChannels(buf, &id);
-		if (!ret) {
-			TM_ILI9341_DrawFilledRectangle(0, 100, 239, 319, ILI9341_COLOR_BLACK);
-			LcdWrite(buf, 0, 100);
-			if (!strlen(buf))
-				strcpy(buf, "index.html\0");
-			ret = WritePage(buf, id);
-			if (ret)
-				LcdWrite("Problem with WritePage\0", 0, 300);
-		}
+		WritePage(buf);
 		PrintTime();
-		delay_ms(1000);		
+		delay_ms(1000);
 	}
 	return 0;
 }

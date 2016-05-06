@@ -33,8 +33,8 @@ void USART2_IRQHandler(void)
 	
 	if (USART2->SR & (USART_SR_ORE | USART_SR_RXNE)) {
 		data = (uint8_t)USART2->DR;
-		buffer_set_byte(&UART2_receive_buffer, (uint8_t)data);
-		esp8266_ReceiveIRQHandler(data);
+		buffer_set_byte(&UART2_receive_buffer, (uint8_t)data);	
+		esp8266_CheckInput(data);
 	}
 
 	if (USART2->SR & (USART_SR_TC | USART_SR_TXE)) {

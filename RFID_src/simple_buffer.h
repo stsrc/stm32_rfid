@@ -8,11 +8,12 @@
 #define BUF_MEM_SIZE 512
 #define TEMP_MEM_SIZE 16
 struct simple_buffer{
-	uint8_t lock;
+	volatile uint8_t lock;
 	char temp[TEMP_MEM_SIZE];
 	char memory[BUF_MEM_SIZE];
 	size_t head;
 	size_t tail;
+	size_t ignore;
 };
 
 void buffer_init(struct simple_buffer *buf);
@@ -31,4 +32,5 @@ int8_t buffer_CopyToNearestWord(struct simple_buffer *buf, char* output,
 				const char * word);
 void buffer_CopyTillHead(struct simple_buffer *buf, char *output);
 int8_t buffer_IsEmpty(struct simple_buffer *buf);
+void buffer_SetIgnore(struct simple_buffer *buf, size_t ignore);
 #endif
