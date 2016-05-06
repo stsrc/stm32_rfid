@@ -194,9 +194,13 @@ int main(void)
 	ret = esp8266_MakeAsServer();
 	CheckError("esp8266_MakeAsServer failed!\0", ret);
 	while(1) {
+		if(esp8266_CheckResetFlag()) {
+			ret = WiFi_Init();
+			CheckError("Can not reset WiFi!", ret);
+			ret = esp8266_MakeAsServer();
+			CheckError("esp8266_MakeAsServer failed!\0", ret);
+		}
 		WritePage(buf);
-		PrintTime();
-		delay_ms(1000);
 	}
 	return 0;
 }

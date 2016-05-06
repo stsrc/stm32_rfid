@@ -282,12 +282,14 @@ int8_t esp8266_ScanForGET(char *file, uint8_t *id)
 struct channel_data {
 	char buf[5][32];
 	char ready[5];
+	uint8_t reset;
 };
 
 
 
 static struct channel_data chn_data;
 static uint8_t do_it = 0;
+
 int8_t esp8266_ScanForFile(char *file, uint8_t *id)
 {
 	do_it = 1;
@@ -303,108 +305,83 @@ int8_t esp8266_ScanForFile(char *file, uint8_t *id)
 	return -EINVAL;	
 }
 
-int8_t CheckInput(uint8_t data)
+
+static int8_t SetChannel(char *buf, size_t buf_size, uint8_t id)
 {
-	static char buffer[20];
-	for(size_t i = 0; i < 18; i++)
-		buffer[i] = buffer[i+1];
-	if(!strncmp(buffer, "reset", 5))
+		strncpy(chn_data.buf[id], buf, buf_size);
+		chn_data.ready[id] = 1;
+		return 0;
+}
+
+int8_t esp8266_CheckResetFlag()
+{
+	if(chn_data.reset) {
+		memset(&chn_data, 0, sizeof(struct channel_data));
 		return 1;
-	else if(!strncmp(buffer, "+IPD", 4))
-		return 2;
-	return 0;
+	} else {
+		return 0;
+	}
+}
+
+static void MoveInsert(char *buffer, size_t size, uint8_t new_byte)
+{
+	for(size_t i = 0; i < size - 1; i++)
+		buffer[i] = buffer[i+1];
+	buffer[size-1] = new_byte;
+}
+
+static int8_t CompareLastBytes(char *buffer, size_t size, char *to_compare) 
+{
+	size_t len = strlen(to_compare);
+	size_t offset = size - len;
+	int8_t ret = strncmp(buffer + offset, to_compare, len);
+	return ret;	
+}
+
+static void MoveToSign(char *buffer, size_t size, char sign)
+{
+	while(buffer[0] != sign)
+		MoveInsert(buffer, size, '\0');
 }
 
 void esp8266_CheckInput(uint8_t data)
 {
 	static uint8_t state = 0;
-	static uint16_t id = 0;
-	static uint16_t len = 0;
+	uint16_t id;
+	uint16_t len;
+	char file[50];
 	static char buf[50];
-	static uint8_t cnt = 0;
+	int8_t ret;
 	if (!do_it)
 		return;
+	memset(file, 0, sizeof(file));
+	MoveInsert(buf, sizeof(buf), data);
+	ret = CompareLastBytes(buf, sizeof(buf), "reset");
+	if (!ret) {
+		chn_data.reset = 1;
+		return;
+	}
+				
 	switch(state){
 	case 0:
-		len = 0;
-		id = 0;
-		cnt = 0;
-		memset(buf, 0, 50);
-		if (data == '+')
+		ret = CompareLastBytes(buf, sizeof(buf), "+IPD,");
+		if (!ret)
 			state = 1;
 		break;
 	case 1:
-		if (data == 'I')
-			state = 2;
-		else
+		ret = CompareLastBytes(buf, sizeof(buf), " HTTP");	
+		if (ret)
+			return;
+		MoveToSign(buf, sizeof(buf), '+');
+		ret = sscanf(buf, "+IPD,%hu,%hu:GET /%s HTTP", &id, &len, file);
+		if (ret != 3) {
 			state = 0;
-		break;
-	case 2:
-		if (data == 'P')
-			state = 3;
-		else 
-			state = 0;
-		break;
-	case 3:
-		if (data == 'D')
-			state = 4;
-		else 
-			state = 0;
-		break;
-	case 4:
-		if (data == ',')
-			state = 5;
-		else
-			state = 0;
-		break;
-	case 5:
-		id = data - 48;
-		state = 6;
-		break;
-	case 6:
-		if (data == ',')
-			state = 7;
-		else
-			state = 0;
-		break;
-	case 7:	
-		if (data != ':') {
-			buf[cnt] = data;
-			cnt++;
-		} else {
-			sscanf(buf, "%hu", &len);
-			state = 8;
-			buffer_SetIgnore(&UART2_receive_buffer, len);
-			cnt = 0;
-			memset(buf, 0, 50);
+			return;
 		}
-		break;
-	case 8:
-		len--;
-		if (data == ' ')
-			state = 9;
-		break;
-	case 9:
-		len--;
-		if(data == ' ') {
-			state = 10;
-		} else {
-			buf[cnt] = data;
-			cnt++;
-		}
-		break;
-	case 10:
-		len--;
-		strncpy(chn_data.buf[id], buf, 31);
-		state = 11;
-		break;
-	case 11:
-		len--;
-		if (len == 0) {
-			state = 0;
-			chn_data.ready[id] = 1;
-		}
-	       break;	
+		SetChannel(file, 31, id);
+		buffer_SetIgnore(&UART2_receive_buffer, len - 10 - strlen(file));
+		memset(buf, 0, sizeof(buf));
+		state = 0;
 	default:
 		break;
 	}	

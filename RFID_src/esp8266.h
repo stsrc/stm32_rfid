@@ -20,10 +20,12 @@ int8_t esp8266_WaitForOk(const char *command, unsigned int delay,
 			 uint8_t multiplier);
 int8_t esp8266_GetTime(uint8_t *hour, uint8_t *minute, uint8_t *second);
 int8_t esp8266_GetIp(char *buf);
-int8_t esp8266_ScanForGET(char *file, uint8_t *id);
+
 int8_t esp8266_MakeAsServer();
 int8_t esp8266_WritePage(char *buf, size_t data_size, uint8_t id, uint8_t close);
 int8_t esp8266_ScanForFile(char *file, uint8_t *id);
 void esp8266_CheckInput(uint8_t data);
 
+
+int8_t esp8266_CheckResetFlag();
 #endif
