@@ -5,6 +5,7 @@ __IO uint8_t RTC_second_flag = 0;
 void RTC_IRQHandler() {
 	RTC_second_flag = 1;
 	RTC->CRL &= ~RTC_CRL_SECF;
+	esp8266_CheckBlocked();	
 }
 
 void RTC_SetTime(uint8_t hour, uint8_t min, uint8_t sec) {

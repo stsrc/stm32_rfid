@@ -16,7 +16,7 @@
 #define AT_CIFSR		"AT+CIFSR\r\n\0"
 #define AT_CIPSEND		"AT+CIPSEND=\0"
 #define AT_CLOSE_SOCKET		"AT+CIPCLOSE=\0"
-
+#define AT_UART_CUR		"AT+UART_CUR=230400,8,1,0,0\r\n\0"
 
 #define CHNL_STATE_CLOSE	4
 #define CHNL_STATE_TRANSMIT	2
@@ -94,6 +94,14 @@ int8_t esp8266_WaitForOk(const char *command, unsigned int delay, uint8_t multip
 	int8_t ret;
 	char buf[BUF_MEM_SIZE];
 	ret = esp8266_GetReply(command, "OK\0", buf, delay, multiplier);
+	if (ret == -EINVAL) {
+		ret = esp8266_GetReply(command, "ERROR\0", buf, 0, 0);
+		if (!ret)
+			return 1;
+//		ret = esp8266_GetReply(command, "FAIL\0", buf, 0, 0);
+//		if (!ret)
+//			return 2;
+	}
 	return ret;	
 }
 
@@ -174,6 +182,11 @@ int8_t esp8266_Init(char *global_buf)
 	esp8266_Send(RST_CMD, strlen(RST_CMD));
 	delay_ms(5000);
 	buffer_Reset(&UART2_receive_buffer);
+	ret = esp8266_Send(AT_UART_CUR, strlen(AT_UART_CUR));
+	if (ret)
+		return -1;
+	ret = esp8266_WaitForOk(AT_UART_CUR, 100, 100);
+	UART_2_ChangeSpeed(230400);
 	ret = esp8266_ConnectToWiFi();
 	if (ret)
 		return ret;
@@ -276,15 +289,16 @@ static inline int8_t esp8266_WriteATCIPSEND(char *data, size_t data_size, uint8_
 	ret = esp8266_Send(temp, strlen(temp));
 	if (ret)
 		return -2;
+
 	ret = esp8266_WaitForOk(temp, 100, 100);
 	if (ret)
 		return -3;
 	ret = esp8266_Send(data, data_size);
 	if (ret)
-		return -3;
+		return -4;
 	ret = esp8266_WaitForOkOrFail("SEND\0", 100, 100);
 	if (ret)
-		return -4;
+		return -5;
 	return 0;
 }
 
@@ -412,7 +426,7 @@ void esp8266_CheckInput(uint8_t data)
 		}
 
 		SetChannelTransmit(file, 31, id);
-		buffer_SetIgnore(&UART2_receive_buffer, len - 10 - 3 - strlen(file));
+		buffer_SetIgnore(&UART2_receive_buffer, len - 30 - strlen(file));
 		memset(buf, 0, sizeof(buf));
 		state = 0;
 		return;
@@ -426,4 +440,16 @@ void esp8266_CheckInput(uint8_t data)
 		chn_data.reset = 1;
 		return;
 	}
+}
+
+void esp8266_CheckBlocked()
+{
+	if (!do_it)
+		return;
+	if (!buffer_IsFull(&UART2_receive_buffer))
+		return;
+	buffer_Reset(&UART2_receive_buffer);
+	for(size_t i = 0; i < 5; i++)
+		esp8266_WriteATCIPCLOSE(i);
+	memset(&chn_data, 0, sizeof(struct channel_data));
 }

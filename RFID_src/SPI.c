@@ -104,7 +104,7 @@ static void SPI_handler_basic_init(SPI_HandleTypeDef *spi_handler,
 	if (inst == SPI1)
 		spi_handler->Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
 	else
-		spi_handler->Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
+		spi_handler->Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
 	spi_handler->Init.FirstBit = SPI_FIRSTBIT_MSB;
 	spi_handler->Init.TIMode = SPI_TIMODE_DISABLE;
 	spi_handler->Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;

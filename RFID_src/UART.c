@@ -47,6 +47,27 @@ void USART2_IRQHandler(void)
 	}
 }
 
+#include <math.h>
+
+void UART_2_ChangeSpeed(unsigned int speed)
+{
+	uint16_t mantissa = 0;
+	uint16_t fraction = 0;
+	uint16_t value = 0;
+	double acc = 24000000.0/(16.0 * (double)speed);
+	double fraction_d = (acc - floor(acc));
+	mantissa = acc - fraction_d;
+	fraction = floor(16.0*fraction_d + 0.5);
+	if (fraction >= 16) {
+		mantissa += 1;
+		fraction -= 16;
+	}
+	value = (mantissa << 4) | fraction;
+	USART2->CR1 &= ~USART_CR1_UE;
+	USART2->BRR = value;
+	USART2->CR1 |= USART_CR1_UE;
+}
+
 HAL_StatusTypeDef UART_1_init() 
 {
 	HAL_StatusTypeDef ret;

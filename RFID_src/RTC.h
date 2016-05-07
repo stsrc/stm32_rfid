@@ -7,6 +7,8 @@
 #include <stm32f1xx_hal_cortex.h>
 
 #include "tm_stm32f1_ili9341.h"
+#include "simple_buffer.h"
+#include "UART.h"
 
 extern __IO uint8_t RTC_second_flag;
 
