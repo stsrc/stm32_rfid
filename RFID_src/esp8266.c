@@ -18,6 +18,51 @@
 #define AT_CLOSE_SOCKET		"AT+CIPCLOSE=\0"
 
 
+#define CHNL_STATE_CLOSE	4
+#define CHNL_STATE_TRANSMIT	2
+#define CHNL_STATE_CLEAR	1
+
+struct channel_data {
+	char buf[5][32];
+	int8_t state[5];
+	uint8_t reset;
+};
+
+static struct channel_data chn_data;
+static uint8_t do_it = 0;
+
+int8_t esp8266_ScanForFile(char *file, uint8_t *id)
+{
+	do_it = 1;
+	for (size_t i = 0; i < 5; i++) {
+		if (chn_data.state[i] ==  CHNL_STATE_TRANSMIT) {
+			strncpy(file, chn_data.buf[i], sizeof(chn_data.buf[i]));
+			chn_data.state[i] = CHNL_STATE_CLEAR;
+			*id = i;
+			return 0;
+		}
+	}
+	return -EINVAL;	
+}
+
+
+static void SetChannelTransmit(char *buf, size_t buf_size, uint8_t id)
+{
+	memset(chn_data.buf[id], 0, sizeof(chn_data.buf[id]));
+	strncpy(chn_data.buf[id], buf, sizeof(chn_data.buf[id]) - 1);
+	chn_data.state[id] = CHNL_STATE_TRANSMIT;
+}
+
+static void SetChannelClose(uint8_t id)
+{
+		chn_data.state[id] = CHNL_STATE_CLOSE;
+}
+
+static int8_t CheckIfChannelClosed(uint8_t id)
+{
+		return chn_data.state[id] == CHNL_STATE_CLOSE;
+}
+
 void esp8266_InitPins() 
 {
 	GPIO_InitTypeDef init;
@@ -45,6 +90,31 @@ int8_t esp8266_WaitForOk(const char *command, unsigned int delay, uint8_t multip
 	char buf[BUF_MEM_SIZE];
 	ret = esp8266_GetReply(command, "OK\0", buf, delay, multiplier);
 	return ret;	
+}
+
+static int8_t esp8266_GetReplyId(const char *command, const char *delimiter, 
+			char *output, unsigned int delay, uint8_t multiplier,
+			uint8_t id)
+{
+	int8_t ret, cnt = 0;
+	do {
+		if (CheckIfChannelClosed(id))
+			return -ECONNABORTED;
+		ret = buffer_SearchGetLabel(&UART2_receive_buffer, command, 
+					    delimiter, output);
+		if (ret)
+			delay_ms(delay);
+	} while (((ret == -EBUSY) || (ret == -EINVAL)) && (++cnt < multiplier));
+	return ret;
+}
+
+static int8_t esp8266_WaitForOkId(const char *cmd, unsigned int delay, 
+				  uint8_t multiplier, uint8_t id)
+{
+	int8_t ret;
+	char buf[BUF_MEM_SIZE];
+	ret = esp8266_GetReplyId(cmd, "OK\0", buf, delay, multiplier, id);
+	return ret;
 }
 
 static int8_t esp8266_ConnectToWiFi()
@@ -92,7 +162,8 @@ int8_t esp8266_MakeAsServer()
 	ret = esp8266_WaitForOk(AT_CIPSTO, 100, 100);
 	if (ret)
 		return -8;
-
+	buffer_Reset(&UART2_transmit_buffer);
+	buffer_Reset(&UART2_receive_buffer);
 	return 0;
 }
 
@@ -205,13 +276,13 @@ static inline int8_t esp8266_WriteATCIPSEND(char *data, size_t data_size, uint8_
 	ret = esp8266_Send(temp, strlen(temp));
 	if (ret)
 		return -1;
-	ret = esp8266_WaitForOk(temp, 100, 100);
+	ret = esp8266_WaitForOkId(temp, 100, 100, id);
 	if (ret)
 		return -2;
 	ret = esp8266_Send(data, data_size);
 	if (ret)
 		return -3;
-	ret = esp8266_WaitForOk("SEND\0", 100, 100);
+	ret = esp8266_WaitForOkId("SEND\0", 100, 100, id);
 	if (ret)
 		return -4;
 	return 0;
@@ -256,63 +327,6 @@ inline int8_t esp8266_GetIp(char *buf)
 	return esp8266_SendGetReply(AT_CIFSR, "OK\0", buf, 100, 10);
 }
 
-int8_t esp8266_ScanForGET(char *file, uint8_t *id)
-{
-	int8_t ret;
-	uint16_t temp_id, temp_len;
-	char *temp_buf;
-	memset(file, 0, BUF_MEM_SIZE);
-	ret = buffer_SearchGetLabel(&UART2_receive_buffer, "+IPD,\0", 
-				    "HTTP/\0", file);
-	if (ret) 
-		return -1;
-	temp_buf = malloc(strlen(file) + 1);
-	if (!temp_buf)
-		return -2;
-	memset(temp_buf, 0, strlen(file) + 1);
-	sscanf(file, "%hu,%hu:GET /%s ", &temp_id, &temp_len, temp_buf);
-	buffer_SetIgnore(&UART2_receive_buffer, temp_len - (strlen("GET /") 
-			 + strlen(temp_buf) + strlen(" HTTP/")));
-	strcpy(file, temp_buf);
-	free(temp_buf);
-	*id = temp_id;
-	return 0;
-}
-
-struct channel_data {
-	char buf[5][32];
-	char ready[5];
-	uint8_t reset;
-};
-
-
-
-static struct channel_data chn_data;
-static uint8_t do_it = 0;
-
-int8_t esp8266_ScanForFile(char *file, uint8_t *id)
-{
-	do_it = 1;
-	for (size_t i = 0; i < 5; i++) {
-		if (chn_data.ready[i]) {
-			strncpy(file, chn_data.buf[i], 32);
-			memset(chn_data.buf[i], 0, 32);
-			chn_data.ready[i] = 0;
-			*id = i;
-			return 0;
-		}
-	}
-	return -EINVAL;	
-}
-
-
-static int8_t SetChannel(char *buf, size_t buf_size, uint8_t id)
-{
-		strncpy(chn_data.buf[id], buf, buf_size);
-		chn_data.ready[id] = 1;
-		return 0;
-}
-
 int8_t esp8266_CheckResetFlag()
 {
 	if(chn_data.reset) {
@@ -351,38 +365,58 @@ void esp8266_CheckInput(uint8_t data)
 	uint16_t len;
 	char file[50];
 	static char buf[50];
+	static size_t cnt = 0;
 	int8_t ret;
 	if (!do_it)
 		return;
-	memset(file, 0, sizeof(file));
 	MoveInsert(buf, sizeof(buf), data);
+				
+	switch(state){
+	case 0:
+		ret = CompareLastBytes(buf, sizeof(buf), "+IPD,");
+		if (!ret) {
+			cnt = 0;
+			state = 1;
+			return;
+		}
+		ret = CompareLastBytes(buf, sizeof(buf), ",CLOSED");
+		if (!ret) {
+			id = *(buf + (sizeof(buf) - 1 - strlen(",CLOSED"))) 
+			     - 48; 
+			//SetChannelClose(id);	
+			return;
+		}
+		break;
+	case 1:
+		ret = CompareLastBytes(buf, sizeof(buf), " HTTP");	
+		if (ret) {
+			cnt++;
+			if (cnt == 50)
+				state = 0;
+			break;
+		}
+		
+		MoveToSign(buf, sizeof(buf), '+');
+		memset(file, 0, sizeof(file));
+		ret = sscanf(buf, "+IPD,%hu,%hu:GET /%s HTTP", &id, &len, file);
+		if (ret != 3) {
+			state = 0;
+			break;
+		}
+
+		SetChannelTransmit(file, 31, id);
+		buffer_SetIgnore(&UART2_receive_buffer, len - 10 - strlen(file));
+		memset(buf, 0, sizeof(buf));
+		state = 0;
+		return;
+
+	default:
+		break;
+	}	
+	
 	ret = CompareLastBytes(buf, sizeof(buf), "reset");
 	if (!ret) {
 		chn_data.reset = 1;
 		return;
 	}
-				
-	switch(state){
-	case 0:
-		ret = CompareLastBytes(buf, sizeof(buf), "+IPD,");
-		if (!ret)
-			state = 1;
-		break;
-	case 1:
-		ret = CompareLastBytes(buf, sizeof(buf), " HTTP");	
-		if (ret)
-			return;
-		MoveToSign(buf, sizeof(buf), '+');
-		ret = sscanf(buf, "+IPD,%hu,%hu:GET /%s HTTP", &id, &len, file);
-		if (ret != 3) {
-			state = 0;
-			return;
-		}
-		SetChannel(file, 31, id);
-		buffer_SetIgnore(&UART2_receive_buffer, len - 10 - strlen(file));
-		memset(buf, 0, sizeof(buf));
-		state = 0;
-	default:
-		break;
-	}	
 }

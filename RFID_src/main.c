@@ -93,15 +93,17 @@ int8_t FATFS_Init(FATFS *SDFatFs, char *path)
 int8_t WiFi_Init()
 {
 	int ret = 0;
-	const size_t max = 3;
+	const size_t max = 5;
 	for (size_t i = 0; i < max; i++) {
 		ret = esp8266_Init();
 		if (!ret) {
 			break;
 		} else if (i != max - 1) {
-			LcdWrite("Problems with esp8266 \ninitalization.\nRetrying in 3 sec.", 0, 0);
+			LcdWrite("Problems with esp8266 init.\n"
+				 "Retrying in 3 sec.", 0, 0);
 			delay_ms(3000);
-			TM_ILI9341_DrawFilledRectangle(0, 0, 239, 50, ILI9341_COLOR_BLACK);	
+			TM_ILI9341_DrawFilledRectangle(0, 0, 239, 50, 
+				 ILI9341_COLOR_BLACK);	
 		}
 	}
 	return ret;
