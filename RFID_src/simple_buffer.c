@@ -89,32 +89,13 @@ static inline int8_t buffer_IsLocked(struct simple_buffer *buf)
 	return buf->lock & 1;
 }
 
-int8_t buffer_CheckIgnore(struct simple_buffer* buf)
-{
-	if (buf->head >= buf->tail) {
-		if (buf->ignore > buf->head - buf->tail)
-			return -EBUSY;
-		else {
-			buf->ignore = 0;
-			return 0;
-		}
-	} else if (buf->head < buf->tail) {
-		if (buf->ignore > buf->tail - buf->head)
-			return -EBUSY;
-		else {
-			buf->ignore = 0;
-			return 0;
-		}
-	}
-	return -EINVAL;
-}
 
 int8_t buffer_set_byte(struct simple_buffer* buf, uint8_t byte)
 {
 	int8_t ret = 0;
-	if ((ret = buffer_CheckIgnore(buf)) != 0) {
+	if (buf->ignore) {
 		buf->ignore--;
-		return ret;
+		return 0;
 	} else if (buffer_CheckLockFlag(buf)) {
 		ret = buffer_PushTempBuf(buf, byte);
 		return ret;

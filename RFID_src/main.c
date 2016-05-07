@@ -197,6 +197,11 @@ int main(void)
 	CheckError("esp8266_MakeAsServer failed!\0", ret);
 	while(1) {
 		if(esp8266_CheckResetFlag()) {
+			TM_ILI9341_DrawFilledRectangle(0, 0, 239, 319, ILI9341_COLOR_BLACK);
+			LcdWrite("esp8266 reset occured!", 0, 0);
+			LcdWrite("esp8266 reinit in 3 sec!", 0, 10);
+			delay_ms(3000);
+			TM_ILI9341_DrawFilledRectangle(0, 0, 239, 319, ILI9341_COLOR_BLACK);
 			ret = WiFi_Init();
 			CheckError("Can not reset WiFi!", ret);
 			ret = esp8266_MakeAsServer();
