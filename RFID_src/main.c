@@ -113,6 +113,7 @@ int8_t WiFi_Init()
 int8_t WritePage(char *buf)
 {
 	uint8_t id;
+	uint8_t cnt = 0;
 	int8_t ret;
 	FIL html_file;
 	size_t bytes_read;
@@ -129,42 +130,58 @@ int8_t WritePage(char *buf)
 	file_size = f_size(&html_file);
 
 	while(file_size > BUF_MEM_SIZE - 1) {
-	
-		memset(buf, 0, BUF_MEM_SIZE);
-	
+			
 		ret = f_read(&html_file, buf, BUF_MEM_SIZE - 1, 
 			     (UINT *)&bytes_read);
+		
 		if (ret) {
 			f_close(&html_file);
 			return -2;
 		}
-	
 		file_size -= bytes_read;
-		ret = esp8266_WritePage(buf, bytes_read, id, 0);
-		if (ret) {
-			f_close(&html_file);
-			return -3;
+
+		
+		buf[bytes_read] = '\0';
+		if (cnt) {
+			ret = esp8266_WaitForAck("SEND\0", 100, 100);
+			if (ret) {
+				f_close(&html_file);
+				return -3;
+			}
+		} else {
+			cnt++;
 		}
 
+		ret = esp8266_WriteATCIPSEND(buf, bytes_read, id);
+		if (ret) {
+			return -3;
+		}
+		
 	}
 
 	memset(buf, 0, BUF_MEM_SIZE);
-	
-	ret = f_read(&html_file, buf, file_size, (UINT *)&bytes_read);
-	if (ret) {
-		f_close(&html_file);
-		return -4;
+	if (cnt) {
+		ret = esp8266_WaitForAck("SEND\0", 100, 100);
+			if (ret) {
+				f_close(&html_file);
+				return -4;
+		}
 	}
-
-	ret = esp8266_WritePage(buf, file_size, id, 1);
+	ret = f_read(&html_file, buf, file_size, (UINT *)&bytes_read);
 	if (ret) {
 		f_close(&html_file);
 		return -5;
 	}
 
+	ret = esp8266_WritePage(buf, file_size, id, 1);
+	if (ret) {
+		f_close(&html_file);
+		return -6;
+	}
+
 	ret = f_close(&html_file);
 	if (ret)
-		return -6;
+		return -7;
 
 	return 0;
 }

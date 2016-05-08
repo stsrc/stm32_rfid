@@ -27,4 +27,7 @@ int8_t esp8266_ScanForFile(char *file, uint8_t *id);
 void esp8266_CheckInput(uint8_t data);
 int8_t esp8266_CheckResetFlag();
 void esp8266_CloseAllChannels();
+
+int8_t esp8266_WriteATCIPSEND(char *data, size_t data_size, uint8_t id);
+int8_t esp8266_WaitForAck(const char *command, unsigned int delay, uint8_t multiplier); 
 #endif

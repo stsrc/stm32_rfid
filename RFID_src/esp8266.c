@@ -279,7 +279,7 @@ int8_t esp8266_GetTime(uint8_t *hour, uint8_t *minute, uint8_t *second)
 	return 0;
 }
 
-static inline int8_t esp8266_WriteATCIPSEND(char *data, size_t data_size, uint8_t id) 
+inline int8_t esp8266_WriteATCIPSEND(char *data, size_t data_size, uint8_t id) 
 {
 	char temp[32];
 	char temp_2[16];
@@ -294,17 +294,13 @@ static inline int8_t esp8266_WriteATCIPSEND(char *data, size_t data_size, uint8_
 	if (ret)
 		return -2;
 
-	ret = esp8266_WaitForAck(temp, 100, 10);
+	ret = esp8266_WaitForAck(temp, 100, 100);
 	if (ret)
 		return -3;
 	
 	ret = esp8266_Send(data, data_size);
 	if (ret)
 		return -4;
-	
-	ret = esp8266_WaitForAck("SEND\0", 100, 10);
-	if (ret)
-		return -5;
 	
 	return 0;
 }
@@ -333,8 +329,13 @@ int8_t esp8266_WritePage(char *buf, size_t data_size, uint8_t id, uint8_t close)
 	ret = esp8266_WriteATCIPSEND(buf, data_size, id);
 	if (ret)
 		return -1;
-	if (close)
+	
+	if (close) {
+		ret = esp8266_WaitForAck("SEND\0", 100, 100);
+		if (ret)
+			return -5;
 		esp8266_WriteATCIPCLOSE(buf, id);
+	}
 	return 0;	
 }
 

@@ -39,9 +39,11 @@ static inline uint8_t buffer_CheckLockFlag(struct simple_buffer *buf)
 static inline int8_t buffer_PushBuf(struct simple_buffer *buf, uint8_t byte)
 {
 	size_t temp;
+	uint8_t acc = 0;
 	temp = buffer_IncrementCounter(buf->head);
-	if (buf->tail == temp)
-		return -ENOMEM;
+	if (buf->tail == temp) {
+		buffer_get_byte(buf, &acc);
+	}
 	buf->memory[buf->head] = byte;
 	buf->head = temp;
 	return 0;
