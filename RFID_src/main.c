@@ -42,9 +42,10 @@ void PrintTime()
 {
 	uint8_t hour, min, sec;
 	char buf[10];
-	RTC_GetTime(&hour, &min, &sec);
-	sprintf(buf, "%02u:%02u:%02u", hour, min, sec);
-	TM_ILI9341_Puts(10, 20, buf, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
+	if(RTC_GetTime(&hour, &min, &sec)) {
+		sprintf(buf, "%02u:%02u:%02u", hour, min, sec);
+		TM_ILI9341_Puts(10, 20, buf, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
+	}
 }
 
 inline static void LcdWrite(char *buf, size_t x, size_t y) {
@@ -120,10 +121,7 @@ int8_t WritePage(char *buf)
 	ret = esp8266_ScanForFile(buf, &id);
 	if (ret)
 		return 0;
-	
-	if (!strlen(buf))
-		strcpy(buf, "index.html");
-	
+		
 	f_open(&html_file, buf, FA_OPEN_EXISTING | FA_READ);
 	if (ret)
 		return -1;
@@ -171,6 +169,23 @@ int8_t WritePage(char *buf)
 	return 0;
 }
 
+
+void CheckWiFi(char *buf) 
+{
+	int ret;
+	if(esp8266_CheckResetFlag()) {
+		TM_ILI9341_DrawFilledRectangle(0, 0, 239, 319, ILI9341_COLOR_BLACK);
+		LcdWrite("esp8266 reset occured!", 0, 0);
+		LcdWrite("esp8266 reinit in 3 sec!", 0, 10);
+		delay_ms(3000);
+		TM_ILI9341_DrawFilledRectangle(0, 0, 239, 319, ILI9341_COLOR_BLACK);
+		ret = WiFi_Init();
+		CheckError("Can not reset WiFi!", ret);
+		ret = esp8266_MakeAsServer();
+		CheckError("esp8266_MakeAsServer failed!\0", ret);
+	}
+}
+
 FATFS SDFatFs;
 int main(void)
 {
@@ -196,18 +211,8 @@ int main(void)
 	ret = esp8266_MakeAsServer();
 	CheckError("esp8266_MakeAsServer failed!\0", ret);
 	while(1) {
-		if(esp8266_CheckResetFlag()) {
-			TM_ILI9341_DrawFilledRectangle(0, 0, 239, 319, ILI9341_COLOR_BLACK);
-			LcdWrite("esp8266 reset occured!", 0, 0);
-			LcdWrite("esp8266 reinit in 3 sec!", 0, 10);
-			delay_ms(3000);
-			TM_ILI9341_DrawFilledRectangle(0, 0, 239, 319, ILI9341_COLOR_BLACK);
-			ret = WiFi_Init();
-			CheckError("Can not reset WiFi!", ret);
-			ret = esp8266_MakeAsServer();
-			CheckError("esp8266_MakeAsServer failed!\0", ret);
-		}
 		WritePage(buf);
+		PrintTime();
 	}
 	return 0;
 }

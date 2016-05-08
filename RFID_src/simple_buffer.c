@@ -178,7 +178,7 @@ int8_t buffer_SearchGetLabel(struct simple_buffer *buf, const char *label,
 	int8_t ret;
 	size_t tail_old;
 	if (buffer_IsLocked(buf))
-		return -1;
+		return -EBUSY;
 	buffer_SetLock(buf);
 	tail_old = buf->tail;
 	ret = buffer_MoveTailToLabel(buf, label);

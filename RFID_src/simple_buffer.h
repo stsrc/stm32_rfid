@@ -6,7 +6,7 @@
 #include <string.h>
 
 #define BUF_MEM_SIZE 512
-#define TEMP_MEM_SIZE 16
+#define TEMP_MEM_SIZE 32
 struct simple_buffer{
 	volatile uint8_t lock;
 	char temp[TEMP_MEM_SIZE];

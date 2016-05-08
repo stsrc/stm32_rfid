@@ -4,8 +4,7 @@ __IO uint8_t RTC_second_flag = 0;
 
 void RTC_IRQHandler() {
 	RTC_second_flag = 1;
-	RTC->CRL &= ~RTC_CRL_SECF;
-	esp8266_CheckBlocked();	
+	RTC->CRL &= ~RTC_CRL_SECF;	
 }
 
 void RTC_SetTime(uint8_t hour, uint8_t min, uint8_t sec) {
@@ -24,11 +23,22 @@ void RTC_SetTime(uint8_t hour, uint8_t min, uint8_t sec) {
 	while(!(RTC->CRL & RTC_CRL_RTOFF)); 
 }
 
-void RTC_GetTime(uint8_t *hour, uint8_t *min, uint8_t *sec) {
-	uint32_t temp = (RTC->CNTH << 16) | RTC->CNTL;
-	*hour = (temp / 3600) % 24;
-	*min = temp / 60 % 60;
-	*sec = temp % 60;
+uint8_t RTC_GetTime(uint8_t *hour, uint8_t *min, uint8_t *sec) {
+	uint32_t temp;
+	uint8_t ret = 0;
+	static uint8_t hour_s, min_s, sec_s;
+	if (RTC_second_flag) {
+		temp = (RTC->CNTH << 16) | RTC->CNTL;
+		hour_s = (temp / 3600) % 24;
+		min_s = temp / 60 % 60;
+		sec_s = temp % 60;
+		ret = 1;
+		RTC_second_flag = 0;
+	}
+	*hour = hour_s;
+	*min = min_s;
+	*sec = sec_s;
+	return ret;
 }
 
 HAL_StatusTypeDef RTC_Init()

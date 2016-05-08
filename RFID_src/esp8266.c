@@ -31,16 +31,27 @@ struct channel_data {
 static struct channel_data chn_data;
 static uint8_t do_it = 0;
 
-static void ClearChannel(const uint8_t id, const int8_t state)
+static void ClearChannel(const uint8_t id, const uint8_t state)
 {
 	chn_data.state[id] &= ~state;
+}
+
+
+static void SetChannel(const uint8_t id, const uint8_t state)
+{
+		chn_data.state[id] |= CHNL_STATE_CLOSE;
+}
+
+static int8_t CheckChannel(const uint8_t id, const uint8_t state)
+{
+		return chn_data.state[id] & state;
 }
 
 int8_t esp8266_ScanForFile(char *file, uint8_t *id)
 {
 	do_it = 1;
 	for (size_t i = 0; i < 5; i++) {
-		if (chn_data.state[i] & CHNL_STATE_TRANSMIT) {
+		if (CheckChannel(i, CHNL_STATE_TRANSMIT)) {
 			strncpy(file, chn_data.buf[i], sizeof(chn_data.buf[i]));
 			ClearChannel(i, CHNL_STATE_TRANSMIT);
 			*id = i;
@@ -56,16 +67,6 @@ static void SetChannelTransmit(char *buf, size_t buf_size, uint8_t id)
 	memset(chn_data.buf[id], 0, sizeof(chn_data.buf[id]));
 	strncpy(chn_data.buf[id], buf, sizeof(chn_data.buf[id]) - 1);
 	chn_data.state[id] |= CHNL_STATE_TRANSMIT;
-}
-
-static void SetChannelClose(uint8_t id)
-{
-		chn_data.state[id] |= CHNL_STATE_CLOSE;
-}
-
-static int8_t CheckIfChannelClosed(uint8_t id)
-{
-		return chn_data.state[id] & CHNL_STATE_CLOSE;
 }
 
 void esp8266_InitPins() 
@@ -94,30 +95,37 @@ int8_t esp8266_WaitForOk(const char *command, unsigned int delay, uint8_t multip
 	int8_t ret;
 	char buf[BUF_MEM_SIZE];
 	ret = esp8266_GetReply(command, "OK\0", buf, delay, multiplier);
-	if (ret == -EINVAL) {
-		ret = esp8266_GetReply(command, "ERROR\0", buf, 0, 0);
-		if (!ret)
-			return 1;
-//		ret = esp8266_GetReply(command, "FAIL\0", buf, 0, 0);
-//		if (!ret)
-//			return 2;
-	}
 	return ret;	
 }
 
-int8_t esp8266_WaitForOkOrFail(const char *cmd, unsigned int delay, uint8_t multi)
+int8_t esp8266_WaitForAck(const char *command, unsigned int delay, uint8_t multiplier) 
 {
 	int8_t ret;
-	char buf[BUF_MEM_SIZE];
 	uint8_t cnt = 0;
+	char buf[BUF_MEM_SIZE];
 	do {
-		ret = esp8266_GetReply(cmd, "OK\0", buf, 0, 0);
-		if (ret)
-			ret = esp8266_GetReply(cmd, "FAIL\0", buf, 0, 0);
+		ret = esp8266_GetReply(command, "OK\0", buf, 10, 0);
+		if (!ret)
+			return 0;
+		
+		if (ret) {
+			ret = esp8266_GetReply(command, "FAIL\0", buf, 10, 0);
+			if (!ret)
+				return 1;
+		}
+
+		if (ret) {
+			ret = esp8266_GetReply(command, "ERROR\0", buf, 10, 0);
+			if (!ret)
+				return 2;
+		
+		}
+		
 		if (ret)
 			delay_ms(delay);
-	} while (((ret == -EBUSY) || (ret == -EINVAL)) && (++cnt < multi));
-	return ret;
+	
+	} while ((ret == -EINVAL || ret == -EBUSY) && ++cnt < multiplier);
+	return ret;	
 }
 
 static int8_t esp8266_ConnectToWiFi()
@@ -165,8 +173,6 @@ int8_t esp8266_MakeAsServer()
 	ret = esp8266_WaitForOk(AT_CIPSTO, 100, 100);
 	if (ret)
 		return -8;
-	buffer_Reset(&UART2_transmit_buffer);
-	buffer_Reset(&UART2_receive_buffer);
 	return 0;
 }
 
@@ -278,44 +284,42 @@ static inline int8_t esp8266_WriteATCIPSEND(char *data, size_t data_size, uint8_
 	int ret;
 	memset(temp, 0, 32);
 	memset(temp_2, 0, 16);
-	sprintf(temp_2, "%u,%u\r\n", (unsigned int)id, (unsigned int)data_size); //TODO BUF OVERFLOW
+	sprintf(temp_2, "%u,%u\r\n", (unsigned int)id, (unsigned int)data_size); 
 	strcpy(temp, AT_CIPSEND);
 	strcat(temp, temp_2);
-	ret = CheckIfChannelClosed(id);
-	if (ret) {
-		ClearChannel(id, CHNL_STATE_CLOSE);
-		return -1;
-	}
+
 	ret = esp8266_Send(temp, strlen(temp));
 	if (ret)
 		return -2;
 
-	ret = esp8266_WaitForOk(temp, 100, 100);
+	ret = esp8266_WaitForAck(temp, 100, 100);
 	if (ret)
 		return -3;
+	
 	ret = esp8266_Send(data, data_size);
 	if (ret)
 		return -4;
-	ret = esp8266_WaitForOkOrFail("SEND\0", 100, 100);
+	
+	ret = esp8266_WaitForAck("SEND\0", 100, 100);
 	if (ret)
 		return -5;
+	
 	return 0;
 }
 
-static inline int8_t esp8266_WriteATCIPCLOSE(uint8_t id) 
+static inline int8_t esp8266_WriteATCIPCLOSE(char *buf, uint8_t id) 
 {
 	char temp[4];
-	char buf[20];
 	int ret;
 	memset(temp, 0, sizeof(temp));
-	memset(buf, 0, sizeof(buf));
+	memset(buf, 0, BUF_MEM_SIZE);
 	sprintf(temp, "%u\r\n", id);
 	strcpy(buf, AT_CLOSE_SOCKET);
 	strcat(buf, temp);
 	ret = esp8266_Send(buf, strlen(buf));
 	if (ret)
 		return -1;
-	ret = esp8266_WaitForOk(buf, 100, 100); //TODO BUF OBERFLOW
+	ret = esp8266_WaitForAck(buf, 100, 100);
 	if (ret)
 		return -2;
 	return ret;
@@ -327,18 +331,8 @@ int8_t esp8266_WritePage(char *buf, size_t data_size, uint8_t id, uint8_t close)
 	ret = esp8266_WriteATCIPSEND(buf, data_size, id);
 	if (ret)
 		return -1;
-	else if ((!close) && CheckIfChannelClosed(id)) {
-		ClearChannel(id, CHNL_STATE_CLOSE);
-		return -2;
-	}
-	else if (close && (!CheckIfChannelClosed(id))) {
-		ret = esp8266_WriteATCIPCLOSE(id);
-		if (ret)
-			return -3;
-		ClearChannel(id, CHNL_STATE_CLOSE);
-	} else if (close) {
-		ClearChannel(id, CHNL_STATE_CLOSE);	
-	}
+	if (close)
+		esp8266_WriteATCIPCLOSE(buf, id);
 	return 0;	
 }
 
@@ -350,12 +344,7 @@ inline int8_t esp8266_GetIp(char *buf)
 
 int8_t esp8266_CheckResetFlag()
 {
-	if(chn_data.reset) {
-		memset(&chn_data, 0, sizeof(struct channel_data));
-		return 1;
-	} else {
-		return 0;
-	}
+	return chn_data.reset;
 }
 
 static void MoveInsert(char *buffer, size_t size, uint8_t new_byte)
@@ -404,7 +393,7 @@ void esp8266_CheckInput(uint8_t data)
 		if (!ret) {
 			id = *(buf + (sizeof(buf) - 1 - strlen(",CLOSED"))) 
 			     - 48; 
-			SetChannelClose(id);	
+			SetChannel(id, CHNL_STATE_CLOSE);	
 			return;
 		}
 		break;
@@ -424,9 +413,10 @@ void esp8266_CheckInput(uint8_t data)
 			state = 0;
 			break;
 		}
-
+		if (!strcmp(file, "HTTP"))
+			strcpy(file, "index.html");
 		SetChannelTransmit(file, 31, id);
-		buffer_SetIgnore(&UART2_receive_buffer, len - 30 - strlen(file));
+		buffer_SetIgnore(&UART2_receive_buffer, len - 30 - strlen(file));//TODO
 		memset(buf, 0, sizeof(buf));
 		state = 0;
 		return;
@@ -442,14 +432,4 @@ void esp8266_CheckInput(uint8_t data)
 	}
 }
 
-void esp8266_CheckBlocked()
-{
-	if (!do_it)
-		return;
-	if (!buffer_IsFull(&UART2_receive_buffer))
-		return;
-	buffer_Reset(&UART2_receive_buffer);
-	for(size_t i = 0; i < 5; i++)
-		esp8266_WriteATCIPCLOSE(i);
-	memset(&chn_data, 0, sizeof(struct channel_data));
-}
+
