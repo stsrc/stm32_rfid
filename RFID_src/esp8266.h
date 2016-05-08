@@ -26,5 +26,5 @@ int8_t esp8266_WritePage(char *buf, size_t data_size, uint8_t id, uint8_t close)
 int8_t esp8266_ScanForFile(char *file, uint8_t *id);
 void esp8266_CheckInput(uint8_t data);
 int8_t esp8266_CheckResetFlag();
-
+void esp8266_CloseAllChannels();
 #endif

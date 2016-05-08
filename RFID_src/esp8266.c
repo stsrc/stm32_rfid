@@ -18,7 +18,8 @@
 #define AT_CLOSE_SOCKET		"AT+CIPCLOSE=\0"
 #define AT_UART_CUR		"AT+UART_CUR=230400,8,1,0,0\r\n\0"
 
-#define CHNL_STATE_CLOSE	4
+#define CHNL_STATE_OPENED	8
+#define CHNL_STATE_CLOSED	4
 #define CHNL_STATE_TRANSMIT	2
 #define CHNL_STATE_CLEAR	1
 
@@ -39,7 +40,7 @@ static void ClearChannel(const uint8_t id, const uint8_t state)
 
 static void SetChannel(const uint8_t id, const uint8_t state)
 {
-		chn_data.state[id] |= CHNL_STATE_CLOSE;
+		chn_data.state[id] |= state;
 }
 
 static int8_t CheckChannel(const uint8_t id, const uint8_t state)
@@ -51,7 +52,8 @@ int8_t esp8266_ScanForFile(char *file, uint8_t *id)
 {
 	do_it = 1;
 	for (size_t i = 0; i < 5; i++) {
-		if (CheckChannel(i, CHNL_STATE_TRANSMIT)) {
+		if (CheckChannel(i, CHNL_STATE_TRANSMIT) && 
+		    CheckChannel(i, CHNL_STATE_OPENED)) {
 			strncpy(file, chn_data.buf[i], sizeof(chn_data.buf[i]));
 			ClearChannel(i, CHNL_STATE_TRANSMIT);
 			*id = i;
@@ -66,7 +68,7 @@ static void SetChannelTransmit(char *buf, size_t buf_size, uint8_t id)
 {
 	memset(chn_data.buf[id], 0, sizeof(chn_data.buf[id]));
 	strncpy(chn_data.buf[id], buf, sizeof(chn_data.buf[id]) - 1);
-	chn_data.state[id] |= CHNL_STATE_TRANSMIT;
+	SetChannel(id, CHNL_STATE_TRANSMIT);
 }
 
 void esp8266_InitPins() 
@@ -292,7 +294,7 @@ static inline int8_t esp8266_WriteATCIPSEND(char *data, size_t data_size, uint8_
 	if (ret)
 		return -2;
 
-	ret = esp8266_WaitForAck(temp, 100, 100);
+	ret = esp8266_WaitForAck(temp, 100, 10);
 	if (ret)
 		return -3;
 	
@@ -300,7 +302,7 @@ static inline int8_t esp8266_WriteATCIPSEND(char *data, size_t data_size, uint8_
 	if (ret)
 		return -4;
 	
-	ret = esp8266_WaitForAck("SEND\0", 100, 100);
+	ret = esp8266_WaitForAck("SEND\0", 100, 10);
 	if (ret)
 		return -5;
 	
@@ -319,7 +321,7 @@ static inline int8_t esp8266_WriteATCIPCLOSE(char *buf, uint8_t id)
 	ret = esp8266_Send(buf, strlen(buf));
 	if (ret)
 		return -1;
-	ret = esp8266_WaitForAck(buf, 100, 100);
+	ret = esp8266_WaitForAck(buf, 100, 10);
 	if (ret)
 		return -2;
 	return ret;
@@ -389,11 +391,22 @@ void esp8266_CheckInput(uint8_t data)
 			state = 1;
 			return;
 		}
+
 		ret = CompareLastBytes(buf, sizeof(buf), ",CLOSED");
 		if (!ret) {
 			id = *(buf + (sizeof(buf) - 1 - strlen(",CLOSED"))) 
 			     - 48; 
-			SetChannel(id, CHNL_STATE_CLOSE);	
+			ClearChannel(id, CHNL_STATE_OPENED);
+			ClearChannel(id, CHNL_STATE_TRANSMIT);	
+			return;
+		}
+
+		ret = CompareLastBytes(buf, sizeof(buf), ",CONNECT");
+		if (!ret) {
+			id = *(buf + (sizeof(buf) - 1 - strlen(",CONNECT"))) 
+			     - 48; 
+			SetChannel(id, CHNL_STATE_OPENED);	
+			ClearChannel(id, CHNL_STATE_TRANSMIT);
 			return;
 		}
 		break;
@@ -431,5 +444,3 @@ void esp8266_CheckInput(uint8_t data)
 		return;
 	}
 }
-
-
