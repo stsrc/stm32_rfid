@@ -357,7 +357,7 @@ static void MoveInsert(char *buffer, size_t size, uint8_t new_byte)
 	buffer[size-1] = new_byte;
 }
 
-static int8_t CompareLastBytes(char *buffer, size_t size, char *to_compare) 
+static int8_t CompareLastBytes(char *buffer, size_t size, const char *to_compare) 
 {
 	size_t len = strlen(to_compare);
 	size_t offset = size - len;
@@ -371,14 +371,88 @@ static void MoveToSign(char *buffer, size_t size, char sign)
 		MoveInsert(buffer, size, '\0');
 }
 
+static int8_t esp8266_state0(const uint8_t data, char *buf, 
+			     const size_t buf_len, uint8_t *state)
+{
+	int8_t ret = 0;
+	uint8_t id;
+	const char *IPD = "+IPD,";
+	const char *CLOSED = ",CLOSED";
+	const char *CONNECT = ",CONNECT";
+
+	switch(data) {
+
+	case ',':
+		ret = CompareLastBytes(buf, buf_len, IPD);
+		if (!ret)
+			*state = 1;
+		break;
+
+	case 'D':
+		ret = CompareLastBytes(buf, buf_len, CLOSED);
+		if (!ret) {
+			id = *(buf + (buf_len - 1 - strlen(CLOSED))) 
+			     - 48; 
+			ClearChannel(id, CHNL_STATE_OPENED);
+			ClearChannel(id, CHNL_STATE_TRANSMIT);	
+		} 
+		break;
+
+	case 'T':
+		ret = CompareLastBytes(buf, buf_len, CONNECT);
+		if (!ret) {
+			id = *(buf + (buf_len - 1 - strlen(CONNECT))) 
+			     - 48; 
+			SetChannel(id, CHNL_STATE_OPENED);	
+			ClearChannel(id, CHNL_STATE_TRANSMIT);
+		} 
+		break;
+	
+	default:
+		ret = -1;
+	}
+
+	return ret;
+}
+
+static int8_t esp8266_state1(const uint8_t data, char *buf, const size_t buf_len,
+			     char *file, const size_t file_len, uint8_t *state)
+{
+	int8_t ret;
+	uint16_t id, len;
+	static uint8_t cnt = 0;
+	
+	cnt++;
+	if (!data == 'P')
+		return -1;
+	
+	ret = CompareLastBytes(buf, buf_len, " HTTP");	
+	if (ret) {
+		if (cnt == buf_len) { //should be possible to remove it
+			cnt = 0;
+			*state = 0;			
+		}
+		return -1;
+	}
+	cnt = 0;	
+	MoveToSign(buf, buf_len, '+');
+	memset(file, 0, file_len);
+	sscanf(buf, "+IPD,%hu,%hu:GET /%s HTTP", &id, &len, file);
+
+	if (!strcmp(file, "HTTP"))
+		strcpy(file, "index.html");
+	SetChannelTransmit(file, file_len, id);
+	buffer_SetIgnore(&UART2_receive_buffer, len - 30 - strlen(file));//TODO
+	memset(buf, 0, buf_len);
+	*state = 0;
+	return 0;
+}
+
 void esp8266_CheckInput(uint8_t data)
 {
 	static uint8_t state = 0;
-	uint16_t id;
-	uint16_t len;
 	char file[50];
 	static char buf[50];
-	static size_t cnt = 0;
 	int8_t ret;
 	if (!do_it)
 		return;
@@ -386,56 +460,15 @@ void esp8266_CheckInput(uint8_t data)
 				
 	switch(state){
 	case 0:
-		ret = CompareLastBytes(buf, sizeof(buf), "+IPD,");
-		if (!ret) {
-			cnt = 0;
-			state = 1;
+		ret = esp8266_state0(data, buf, sizeof(buf), &state);
+		if (!ret)
 			return;
-		}
-
-		ret = CompareLastBytes(buf, sizeof(buf), ",CLOSED");
-		if (!ret) {
-			id = *(buf + (sizeof(buf) - 1 - strlen(",CLOSED"))) 
-			     - 48; 
-			ClearChannel(id, CHNL_STATE_OPENED);
-			ClearChannel(id, CHNL_STATE_TRANSMIT);	
-			return;
-		}
-
-		ret = CompareLastBytes(buf, sizeof(buf), ",CONNECT");
-		if (!ret) {
-			id = *(buf + (sizeof(buf) - 1 - strlen(",CONNECT"))) 
-			     - 48; 
-			SetChannel(id, CHNL_STATE_OPENED);	
-			ClearChannel(id, CHNL_STATE_TRANSMIT);
-			return;
-		}
 		break;
 	case 1:
-		ret = CompareLastBytes(buf, sizeof(buf), " HTTP");	
-		if (ret) {
-			cnt++;
-			if (cnt == 50)
-				state = 0;
-			break;
-		}
-		
-		MoveToSign(buf, sizeof(buf), '+');
-		memset(file, 0, sizeof(file));
-		ret = sscanf(buf, "+IPD,%hu,%hu:GET /%s HTTP", &id, &len, file);
-		if (ret != 3) {
-			state = 0;
-			break;
-		}
-		if (!strcmp(file, "HTTP"))
-			strcpy(file, "index.html");
-		SetChannelTransmit(file, 31, id);
-		buffer_SetIgnore(&UART2_receive_buffer, len - 30 - strlen(file));//TODO
-		memset(buf, 0, sizeof(buf));
-		state = 0;
-		return;
-
-	default:
+		ret = esp8266_state1(data, buf, sizeof(buf), file, 
+				     sizeof(file), &state);
+		if (!ret)
+			return;
 		break;
 	}	
 	
