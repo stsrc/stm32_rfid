@@ -75,7 +75,7 @@ void esp8266_InitPins()
 {
 	GPIO_InitTypeDef init;
 	init.Mode = GPIO_MODE_OUTPUT_PP;
-	init.Pull = GPIO_NOPULL;
+	init.Pull = GPIO_PULLUP;
 	init.Speed = GPIO_SPEED_FREQ_HIGH;
 	init.Pin = ESP8266_RST_PIN | ESP8266_FW_PIN;
 	__HAL_RCC_GPIOA_CLK_ENABLE();
@@ -87,9 +87,9 @@ void esp8266_InitPins()
 void esp8266_HardReset() 
 {
 	HAL_GPIO_WritePin(ESP8266_RST_PORT, ESP8266_RST_PIN, GPIO_PIN_RESET);
-	delay_ms(500);
+	delay_ms(1500);
 	HAL_GPIO_WritePin(ESP8266_RST_PORT, ESP8266_RST_PIN, GPIO_PIN_SET);
-	delay_ms(500);	
+	delay_ms(1000);	
 }
 
 int8_t esp8266_WaitForOk(const char *command, unsigned int delay, uint8_t multiplier) 
@@ -347,7 +347,17 @@ inline int8_t esp8266_GetIp(char *buf)
 
 int8_t esp8266_CheckResetFlag()
 {
-	return chn_data.reset;
+	int8_t ret = chn_data.reset;
+	if (ret) {
+		memset(&chn_data, 0, sizeof(struct channel_data));
+		buffer_Reset(&UART2_receive_buffer);
+	}
+	return ret;
+}
+
+void esp8266_ClearResetFlag()
+{
+		chn_data.reset = 0;
 }
 
 static void MoveInsert(char *buffer, size_t size, uint8_t new_byte)
@@ -423,7 +433,7 @@ static int8_t esp8266_state1(const uint8_t data, char *buf, const size_t buf_len
 	static uint8_t cnt = 0;
 	
 	cnt++;
-	if (!data == 'P')
+	if (!(data == 'P'))
 		return -1;
 	
 	ret = CompareLastBytes(buf, buf_len, " HTTP");	
@@ -442,9 +452,47 @@ static int8_t esp8266_state1(const uint8_t data, char *buf, const size_t buf_len
 	if (!strcmp(file, "HTTP"))
 		strcpy(file, "index.html");
 	SetChannelTransmit(file, file_len, id);
-	buffer_SetIgnore(&UART2_receive_buffer, len - 30 - strlen(file));//TODO
+	buffer_SetIgnore(&UART2_receive_buffer, len - 30 - strlen(file));
 	memset(buf, 0, buf_len);
 	*state = 0;
+	return 0;
+}
+
+static int8_t esp8266_CheckErrorsOnInput(const uint8_t data, uint8_t *state, 
+					 char * buf, const size_t len)
+{
+	static size_t cnt = 0;
+	static size_t test = 0;
+	
+	if ((data != '\r') && (data != '\n') && (data != '\0')) {
+		if ((data < ' ') || (data > '~'))
+			test++;
+		else
+			test = 0;
+	}
+	
+	if (test == 3) {
+		chn_data.reset = 1;
+		test = 0;
+		cnt = 0;
+		*state = 0;
+		memset(buf, 0, len);
+		return 1;
+	}
+	
+	return 0;
+}
+
+static int8_t esp8266_CheckReset(uint8_t *state, char *buf, const size_t len)
+{
+	int8_t ret;
+	ret = CompareLastBytes(buf, sizeof(buf), "rst cause");
+	if (!ret) {
+		chn_data.reset = 1;
+		memset(buf, 0, len);
+		*state = 0;
+		return 1;
+	}
 	return 0;
 }
 
@@ -453,11 +501,21 @@ void esp8266_CheckInput(uint8_t data)
 	static uint8_t state = 0;
 	char file[50];
 	static char buf[50];
+
 	int8_t ret;
 	if (!do_it)
 		return;
+	
 	MoveInsert(buf, sizeof(buf), data);
-				
+	
+	ret = esp8266_CheckErrorsOnInput(data, &state, buf, sizeof(buf));
+	if (ret) 
+		return;
+
+	ret = esp8266_CheckReset(&state, buf, sizeof(buf));
+	if (ret)
+		return;
+
 	switch(state){
 	case 0:
 		ret = esp8266_state0(data, buf, sizeof(buf), &state);
@@ -471,10 +529,4 @@ void esp8266_CheckInput(uint8_t data)
 			return;
 		break;
 	}	
-	
-	ret = CompareLastBytes(buf, sizeof(buf), "rst cause");
-	if (!ret) {
-		chn_data.reset = 1;
-		return;
-	}
 }
