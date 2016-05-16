@@ -123,7 +123,7 @@ int8_t WritePage(char *buf)
 	if (ret)
 		return 0;
 		
-	f_open(&html_file, buf, FA_OPEN_EXISTING | FA_READ);
+	ret = f_open(&html_file, buf, FA_OPEN_EXISTING | FA_READ);
 	if (ret)
 		return -1;
 	
@@ -154,7 +154,8 @@ int8_t WritePage(char *buf)
 
 		ret = esp8266_WriteATCIPSEND(buf, bytes_read, id);
 		if (ret) {
-			return -3;
+			f_close(&html_file);
+			return -8;
 		}
 		
 	}
@@ -187,7 +188,7 @@ int8_t WritePage(char *buf)
 }
 
 
-void CheckWiFi(char *buf) 
+void CheckWiFi() 
 {
 	int ret;
 	if(esp8266_CheckResetFlag()) {
@@ -200,6 +201,7 @@ void CheckWiFi(char *buf)
 		CheckError("Can not reset WiFi!", ret);
 		ret = esp8266_MakeAsServer();
 		CheckError("esp8266_MakeAsServer failed!\0", ret);
+		esp8266_ClearResetFlag();
 	}
 }
 
@@ -230,6 +232,7 @@ int main(void)
 	while(1) {
 		WritePage(buf);
 		PrintTime();
+		CheckWiFi();
 	}
 	return 0;
 }
