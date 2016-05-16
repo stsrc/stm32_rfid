@@ -11,7 +11,7 @@
 #include "RTC.h"
 #include "delay.h"
 #include "esp8266.h"
-
+#include <string.h>
 
 void set_leds()
 {
@@ -110,38 +110,63 @@ int8_t WiFi_Init()
 	return ret;
 }
 
+/**
+ * @brief Function returns 0 if html file is requested,
+ * or 1 if php is called.
+ *
+ * @param buf - pointer to buffer which contains file name (with possible 
+ * parameters if it is php call).
+ */
+int8_t CheckFormat(char *buf)
+{
+	char *ptr = strstr(buf, ".php?");
+	if (ptr) {
+		return 1;
+	} else {	
+		return 0;
+	}
+}
+
 int8_t WritePage(char *buf)
 {
+	char *temp = NULL;
 	uint8_t id;
 	uint8_t cnt = 0;
 	int8_t ret;
 	FIL html_file;
-	size_t bytes_read;
+	size_t bytes_read, to_read;
 	volatile size_t file_size = 0;
 
 	ret = esp8266_ScanForFile(buf, &id);
 	if (ret)
 		return 0;
 		
+	ret = CheckFormat(buf);
+	if (ret) {
+		strtok(buf, "?");
+		temp = strtok(NULL, "?");
+	}
+
 	ret = f_open(&html_file, buf, FA_OPEN_EXISTING | FA_READ);
 	if (ret)
 		return -1;
-	
 	file_size = f_size(&html_file);
 
-	while(file_size > BUF_MEM_SIZE - 1) {
-			
-		ret = f_read(&html_file, buf, BUF_MEM_SIZE - 1, 
+	while(file_size) {
+		to_read = file_size > BUF_MEM_SIZE - 1 ? BUF_MEM_SIZE - 1 : file_size;
+
+		ret = f_read(&html_file, buf, to_read, 
 			     (UINT *)&bytes_read);
 		
 		if (ret) {
 			f_close(&html_file);
 			return -2;
 		}
+		
 		file_size -= bytes_read;
 
-		
 		buf[bytes_read] = '\0';
+		
 		if (cnt) {
 			ret = esp8266_WaitForAck("SEND\0", 100, 100);
 			if (ret) {
@@ -157,28 +182,17 @@ int8_t WritePage(char *buf)
 			f_close(&html_file);
 			return -8;
 		}
-		
 	}
-
-	memset(buf, 0, BUF_MEM_SIZE);
-	if (cnt) {
-		ret = esp8266_WaitForAck("SEND\0", 100, 100);
-			if (ret) {
-				f_close(&html_file);
-				return -4;
-		}
-	}
-	ret = f_read(&html_file, buf, file_size, (UINT *)&bytes_read);
+	
+	ret = esp8266_WaitForAck("SEND\0", 100, 100);
 	if (ret) {
 		f_close(&html_file);
 		return -5;
 	}
 
-	ret = esp8266_WritePage(buf, file_size, id, 1);
-	if (ret) {
-		f_close(&html_file);
+	ret = esp8266_WriteATCIPCLOSE(buf, id);
+	if (ret)
 		return -6;
-	}
 
 	ret = f_close(&html_file);
 	if (ret)

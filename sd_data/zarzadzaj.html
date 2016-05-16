@@ -11,5 +11,16 @@
 			<a href="zarzadzaj.html">Zarządzanie kartami RFID</a>
 		</p>
 		<h1>Zarządzanie kartami RFID.</h1>
+		<form action="select.php" method="get">
+			<select name="ID_List">
+				<option value="$value">$value</option>
+			</select>
+			<select name="MOD_List">
+				<option value="0">Zablokowana</option>
+				<option value="1">Dopuszczona</option>
+			</select>
+			<input type="submit" value="Aktualizuj">
+		</form>
+
 	</body>
 </html>

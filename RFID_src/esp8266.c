@@ -305,7 +305,7 @@ inline int8_t esp8266_WriteATCIPSEND(char *data, size_t data_size, uint8_t id)
 	return 0;
 }
 
-static inline int8_t esp8266_WriteATCIPCLOSE(char *buf, uint8_t id) 
+int8_t esp8266_WriteATCIPCLOSE(char *buf, uint8_t id) 
 {
 	char temp[4];
 	int ret;
@@ -426,42 +426,44 @@ static int8_t esp8266_state0(const uint8_t data, char *buf,
 }
 
 static int8_t esp8266_state1(const uint8_t data, char *buf, const size_t buf_len,
-			     char *file, const size_t file_len, uint8_t *state)
+			     uint8_t *state, uint8_t *cnt)
 {
 	int8_t ret;
 	uint16_t id, len;
-	static uint8_t cnt = 0;
-	
+	size_t s_len;
+	char file[32];
 	cnt++;
 	if (!(data == 'P'))
 		return -1;
 	
 	ret = CompareLastBytes(buf, buf_len, " HTTP");	
 	if (ret) {
-		if (cnt == buf_len) { //should be possible to remove it
-			cnt = 0;
+		if (*cnt == buf_len) { //should be possible to remove it
+			*cnt = 0;
 			*state = 0;			
 		}
 		return -1;
 	}
-	cnt = 0;	
+	*cnt = 0;	
 	MoveToSign(buf, buf_len, '+');
-	memset(file, 0, file_len);
-	sscanf(buf, "+IPD,%hu,%hu:GET /%s HTTP", &id, &len, file);
-
+	memset(file, 0, sizeof(file));
+	ret = sscanf(buf, "+IPD,%hu,%hu:GET /%s HTTP", &id, &len, file);
+	if (ret != 3)
+		return -1;
+	s_len = strlen(file);
 	if (!strcmp(file, "HTTP"))
 		strcpy(file, "index.html");
-	SetChannelTransmit(file, file_len, id);
-	buffer_SetIgnore(&UART2_receive_buffer, len - 30 - strlen(file));
+	SetChannelTransmit(file, sizeof(file), id);
+
+	buffer_SetIgnore(&UART2_receive_buffer, len - s_len - 20); //20
 	memset(buf, 0, buf_len);
 	*state = 0;
 	return 0;
 }
 
 static int8_t esp8266_CheckErrorsOnInput(const uint8_t data, uint8_t *state, 
-					 char * buf, const size_t len)
+					 char *buf, const size_t len)
 {
-	static size_t cnt = 0;
 	static size_t test = 0;
 	
 	if ((data != '\r') && (data != '\n') && (data != '\0')) {
@@ -474,7 +476,6 @@ static int8_t esp8266_CheckErrorsOnInput(const uint8_t data, uint8_t *state,
 	if (test == 3) {
 		chn_data.reset = 1;
 		test = 0;
-		cnt = 0;
 		*state = 0;
 		memset(buf, 0, len);
 		return 1;
@@ -499,8 +500,8 @@ static int8_t esp8266_CheckReset(uint8_t *state, char *buf, const size_t len)
 void esp8266_CheckInput(uint8_t data)
 {
 	static uint8_t state = 0;
-	char file[50];
-	static char buf[50];
+	static uint8_t cnt = 0;
+	static char buf[32];
 
 	int8_t ret;
 	if (!do_it)
@@ -509,12 +510,16 @@ void esp8266_CheckInput(uint8_t data)
 	MoveInsert(buf, sizeof(buf), data);
 	
 	ret = esp8266_CheckErrorsOnInput(data, &state, buf, sizeof(buf));
-	if (ret) 
+	if (ret) { 
+		cnt = 0;
 		return;
+	}
 
 	ret = esp8266_CheckReset(&state, buf, sizeof(buf));
-	if (ret)
+	if (ret) {
+		cnt = 0;
 		return;
+	}
 
 	switch(state){
 	case 0:
@@ -523,8 +528,7 @@ void esp8266_CheckInput(uint8_t data)
 			return;
 		break;
 	case 1:
-		ret = esp8266_state1(data, buf, sizeof(buf), file, 
-				     sizeof(file), &state);
+		ret = esp8266_state1(data, buf, sizeof(buf), &state, &cnt);
 		if (!ret)
 			return;
 		break;
