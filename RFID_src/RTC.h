@@ -15,4 +15,8 @@ extern __IO uint8_t RTC_second_flag;
 HAL_StatusTypeDef RTC_Init();
 uint8_t RTC_GetTime(uint8_t *hour, uint8_t *min, uint8_t *sec);
 void RTC_SetTime(uint8_t hour, uint8_t min, uint8_t sec);
+void RTC_SetDate(uint16_t year, uint8_t month, uint8_t day, uint8_t hour, 
+		 uint8_t min, uint8_t sec);
+uint8_t RTC_GetDate(uint16_t *year, uint8_t *month, uint8_t *day, 
+		    uint8_t *hour, uint8_t *min, uint8_t *sec);
 #endif

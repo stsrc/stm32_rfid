@@ -239,19 +239,53 @@ int8_t esp8266_GetReply(const char *command, const char *delimiter,
 	return ret;
 }
 
-static inline void ParseTime(uint8_t *hour, uint8_t *minute, uint8_t *second, 
+static inline void ParseDate(uint8_t *day, uint8_t *month, uint16_t *year, 
+			     uint8_t *hour, uint8_t *minute, uint8_t *second, 
 			     char *buf)
 {
-	size_t len = strlen(buf);
-	unsigned short temp_h, temp_min, temp_sec;
-	buf = &buf[len - 1 - 7];
-	sscanf(buf, " %hu:%hu:%hu", &temp_h, &temp_min, &temp_sec);
+	unsigned short temp_h, temp_min, temp_sec, temp_day, temp_year;
+	char temp_buf[16];
+	char temp[5];
+	memset(temp, 0, sizeof(temp));
+	memset(temp_buf, 0, sizeof(temp_buf));
+	int ret = sscanf(buf, "%s %hu %s %hu %hu:%hu:%hu", temp, &temp_day, temp_buf, &temp_year,
+	       &temp_h, &temp_min, &temp_sec);
 	*hour = (uint8_t)temp_h;
 	*minute = (uint8_t)temp_min;
-	*second = (uint8_t)temp_sec;	
+	*second = (uint8_t)temp_sec;
+	*day = (uint8_t)temp_day;
+	*year = temp_year;
+
+	if (!strcmp(temp_buf, "jan"))
+		*month = 1;
+	else if (!strcmp(temp_buf, "Feb"))
+		*month = 2;
+	else if (!strcmp(temp_buf, "Mar"))
+		*month = 3;
+	else if (!strcmp(temp_buf, "Apr"))
+		*month = 4;
+	else if (!strcmp(temp_buf, "May"))
+		*month = 5;
+	else if (!strcmp(temp_buf, "Jun"))
+		*month = 6;
+	else if (!strcmp(temp_buf, "Jul"))
+		*month = 7;
+	else if (!strcmp(temp_buf, "Aug"))
+		*month = 8;
+	else if (!strcmp(temp_buf, "Sep"))
+		*month = 9;
+	else if (!strcmp(temp_buf, "Oct"))
+		*month = 10;
+	else if (!strcmp(temp_buf, "Nov"))
+		*month = 11;
+	else if (!strcmp(temp_buf, "Dec"))
+		*month = 12;
+	else 
+		*month = 0;	
 }	
 
-int8_t esp8266_GetTime(uint8_t *hour, uint8_t *minute, uint8_t *second)
+int8_t esp8266_GetDate(uint8_t *day, uint8_t *month, uint16_t *year, 
+		       uint8_t *hour, uint8_t *minute, uint8_t *second)
 {
 	char *http_connect = "AT+CIPSTART=\"TCP\",\"www.google.com\",80\r\n\0";
 	char *http_disconnect = "AT+CIPCLOSE\r\n\0";
@@ -273,7 +307,7 @@ int8_t esp8266_GetTime(uint8_t *hour, uint8_t *minute, uint8_t *second)
 	ret = buffer_SearchGetLabel(&UART2_receive_buffer, "Date: \0", " GMT\0", buf);
 	if (ret)
 		return -3;
-	ParseTime(hour, minute, second, buf);
+	ParseDate(day, month, year, hour, minute, second, buf);
 	buffer_Reset(&UART2_receive_buffer);
 	esp8266_Send(http_disconnect, strlen(http_disconnect));
 	ret = esp8266_WaitForOk(http_disconnect, 100, 100);

@@ -48,6 +48,18 @@ void PrintTime()
 	}
 }
 
+void PrintDate() 
+{
+	uint8_t month, day, hour, min, sec;
+	uint16_t year;
+	char buf[25];
+	memset(buf, 0, sizeof(buf));
+	if(RTC_GetDate(&year, &month, &day, &hour, &min, &sec)) {
+		sprintf(buf, "%02u.%02u.%04hu %02u:%02u:%02u", day, month, year, hour, min, sec);
+		TM_ILI9341_Puts(10, 20, buf, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
+	}
+}
+
 inline static void LcdWrite(char *buf, size_t x, size_t y) {
 	TM_ILI9341_Puts(x, y, buf, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 }
@@ -63,10 +75,11 @@ void CheckError(char * message, int ret)
 int8_t UpdateTime() 
 {
 	int ret;
-	uint8_t hour, minute, second;
-	ret = esp8266_GetTime(&hour, &minute, &second);
+	uint8_t hour, minute, second, day, month;
+	uint16_t year;
+	ret = esp8266_GetDate(&day, &month, &year, &hour, &minute, &second);
 	CheckError("GetTime failed!\0", ret);
-	RTC_SetTime(hour + 2, minute, second);	
+	RTC_SetDate(year, month, day, hour + 2, minute, second);	
 	return ret;
 }
 
@@ -239,13 +252,13 @@ int main(void)
 	ret = WiFi_Init();
 	CheckError("Can not connect to WiFi!\0", ret);
 	UpdateTime();
-	PrintTime();
+	PrintDate();
 	GetIp(buf);
 	ret = esp8266_MakeAsServer();
 	CheckError("esp8266_MakeAsServer failed!\0", ret);
 	while(1) {
 		WritePage(buf);
-		PrintTime();
+		PrintDate();
 		CheckWiFi();
 	}
 	return 0;

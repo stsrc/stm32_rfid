@@ -18,7 +18,8 @@ int8_t esp8266_GetReply(const char *command, const char *delimiter,
 			char *output, unsigned int delay, uint8_t multiplier);
 int8_t esp8266_WaitForOk(const char *command, unsigned int delay, 
 			 uint8_t multiplier);
-int8_t esp8266_GetTime(uint8_t *hour, uint8_t *minute, uint8_t *second);
+int8_t esp8266_GetDate(uint8_t *day, uint8_t *month, uint16_t *year, 
+		       uint8_t *hour, uint8_t *minute, uint8_t *second);
 int8_t esp8266_GetIp(char *buf);
 
 int8_t esp8266_MakeAsServer();
