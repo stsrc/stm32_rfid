@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html>
-<body>
-
-ID: <?php echo $_GET['ID_List']; ?>
-
-</body>
+	<head>
+		<meta charset="UTF-8">
+	</head>
+	<body>
+		<script>
+			window.alert("Zmiana ustawień przebiegła pomyślnie.");
+	</body>
 </html>

@@ -1,0 +1,1 @@
+document.GetElementById("test").innerHTML = "test";
