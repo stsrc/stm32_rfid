@@ -23,8 +23,11 @@
 #define CHNL_STATE_TRANSMIT	2
 #define CHNL_STATE_CLEAR	1
 
+
+#define HELP_BUF_SIZE 32
+
 struct channel_data {
-	char buf[5][32];
+	char buf[5][HELP_BUF_SIZE];
 	int8_t state[5];
 	uint8_t reset;
 };
@@ -64,10 +67,10 @@ int8_t esp8266_ScanForFile(char *file, uint8_t *id)
 }
 
 
-static void SetChannelTransmit(char *buf, size_t buf_size, uint8_t id)
+static void SetChannelTransmit(char *buf, uint8_t id)
 {
 	memset(chn_data.buf[id], 0, sizeof(chn_data.buf[id]));
-	strncpy(chn_data.buf[id], buf, sizeof(chn_data.buf[id]) - 1);
+	strncpy(chn_data.buf[id], buf, HELP_BUF_SIZE - 1);
 	SetChannel(id, CHNL_STATE_TRANSMIT);
 }
 
@@ -197,7 +200,7 @@ int8_t esp8266_Init(char *global_buf)
 	UART_2_ChangeSpeed(230400);
 	ret = esp8266_ConnectToWiFi();
 	if (ret)
-		return ret;
+		return -2;
 	return 0;
 }
 
@@ -431,7 +434,7 @@ static int8_t esp8266_state1(const uint8_t data, char *buf, const size_t buf_len
 	int8_t ret;
 	uint16_t id, len;
 	size_t s_len;
-	char file[32];
+	char file[HELP_BUF_SIZE];
 	cnt++;
 	if (!(data == 'P'))
 		return -1;
@@ -453,9 +456,9 @@ static int8_t esp8266_state1(const uint8_t data, char *buf, const size_t buf_len
 	s_len = strlen(file);
 	if (!strcmp(file, "HTTP"))
 		strcpy(file, "index.html");
-	SetChannelTransmit(file, sizeof(file), id);
+	SetChannelTransmit(file, id);
 
-	buffer_SetIgnore(&UART2_receive_buffer, len - s_len - 20); //20
+	buffer_SetIgnore(&UART2_receive_buffer, len - s_len - 30); //20
 	memset(buf, 0, buf_len);
 	*state = 0;
 	return 0;
@@ -501,7 +504,7 @@ void esp8266_CheckInput(uint8_t data)
 {
 	static uint8_t state = 0;
 	static uint8_t cnt = 0;
-	static char buf[32];
+	static char buf[2 * HELP_BUF_SIZE];
 
 	int8_t ret;
 	if (!do_it)
