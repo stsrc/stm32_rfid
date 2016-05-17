@@ -12,17 +12,20 @@
 			<a href="zarzadzaj.html">Zarządzanie kartami RFID</a>
 		</p>
 
-		<h1>Zarządzanie kartami RFID.</h1>		
+		<h1>Zarządzanie kartami RFID.</h1>
 		
+			<p id="table"></p>
+			<script src="ID_list.js"></script>
+
 			<form action="select.php" method="get">
 
 			<select name="ID_List" id="IDdrop"></select>
 			<script src="ID_dropdownlist.js"></script>
 		
 			<select name="MOD_List">
-				<option value="0">Zablokowana</option>
-				<option value="1">Dopuszczona</option>
-				<option value="2">Zresetowana</option>
+				<option value="0">Zablokuj</option>
+				<option value="1">Dopuść</option>
+				<option value="2">Zresetuj</option>
 			</select>
 
 			<input type="submit" value="Aktualizuj"></input>

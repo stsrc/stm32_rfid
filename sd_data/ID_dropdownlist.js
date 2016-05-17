@@ -1,6 +1,35 @@
-function getHtml() {
-	var html = "<option value=\"0\">0</option>";
-	return html;
+function createDropDownList(text)
+{
+	var element = '';
+	var temp;
+	var cnt = 0;
+	
+	temp = text.split(";");
+
+	while(temp[cnt]) {
+		element+= "<option value=\"" + cnt/2 + "\">" + temp[cnt] + "</option>";
+		cnt += 2;
+	}
+
+	return element;
 }
 
-document.getElementById("IDdrop").innerHTML = getHtml();
+function readTextFile(file)
+{
+    var rawFile = new XMLHttpRequest();
+    rawFile.open("GET", file, false);
+    rawFile.onreadystatechange = function ()
+    {
+        if(rawFile.readyState === 4)
+        {
+            if(rawFile.status === 200 || rawFile.status == 0)
+            {
+                var allText = rawFile.responseText;
+		document.getElementById("IDdrop").innerHTML = createDropDownList(allText);
+            }
+        }
+    }
+    rawFile.send(null);
+}
+
+readTextFile("ID_list.txt");
