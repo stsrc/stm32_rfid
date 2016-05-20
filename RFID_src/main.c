@@ -142,7 +142,6 @@ int8_t CheckFormat(char *buf)
 
 int8_t WritePage(char *buf)
 {
-	char *temp = NULL;
 	uint8_t id;
 	uint8_t cnt = 0;
 	int8_t ret;
@@ -154,24 +153,21 @@ int8_t WritePage(char *buf)
 	if (ret)
 		return 0;
 		
-	ret = CheckFormat(buf);
-	if (ret) {
-		strtok(buf, "?");
-		temp = strtok(NULL, "?");
-	}
-
 	ret = f_open(&html_file, buf, FA_OPEN_EXISTING | FA_READ);
-	if (ret)
+	if (ret) {
+		esp8266_WriteATCIPCLOSE(buf, id);
 		return -1;
+	}
 	file_size = f_size(&html_file);
 
 	while(file_size) {
-		to_read = file_size > BUF_MEM_SIZE - 1 ? BUF_MEM_SIZE - 1 : file_size;
+		to_read = (file_size > BUF_MEM_SIZE - 1) ? (BUF_MEM_SIZE - 1) : file_size;
 
 		ret = f_read(&html_file, buf, to_read, 
 			     (UINT *)&bytes_read);
 		
 		if (ret) {
+			esp8266_WriteATCIPCLOSE(buf, id);
 			f_close(&html_file);
 			return -2;
 		}
@@ -181,7 +177,7 @@ int8_t WritePage(char *buf)
 		buf[bytes_read] = '\0';
 		
 		if (cnt) {
-			ret = esp8266_WaitForAck("SEND\0", 100, 100);
+			ret = esp8266_WaitForAck(id, "SEND\0", 100, 100);
 			if (ret) {
 				f_close(&html_file);
 				return -3;
@@ -197,15 +193,13 @@ int8_t WritePage(char *buf)
 		}
 	}
 	
-	ret = esp8266_WaitForAck("SEND\0", 100, 100);
+	ret = esp8266_WaitForAck(id, "SEND\0", 100, 100);
 	if (ret) {
 		f_close(&html_file);
 		return -5;
 	}
 
 	ret = esp8266_WriteATCIPCLOSE(buf, id);
-	if (ret)
-		return -6;
 
 	ret = f_close(&html_file);
 	if (ret)
@@ -229,6 +223,8 @@ void CheckWiFi()
 		ret = esp8266_MakeAsServer();
 		CheckError("esp8266_MakeAsServer failed!\0", ret);
 		esp8266_ClearResetFlag();
+	} else if (buffer_IsFull(&UART2_receive_buffer)) {
+		buffer_Reset(&UART2_receive_buffer);
 	}
 }
 

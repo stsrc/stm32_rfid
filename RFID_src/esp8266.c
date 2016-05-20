@@ -23,7 +23,6 @@
 #define CHNL_STATE_TRANSMIT	2
 #define CHNL_STATE_CLEAR	1
 
-
 #define HELP_BUF_SIZE 32
 
 struct channel_data {
@@ -55,10 +54,8 @@ int8_t esp8266_ScanForFile(char *file, uint8_t *id)
 {
 	do_it = 1;
 	for (size_t i = 0; i < 5; i++) {
-		if (CheckChannel(i, CHNL_STATE_TRANSMIT) && 
-		    CheckChannel(i, CHNL_STATE_OPENED)) {
+		if (CheckChannel(i, CHNL_STATE_TRANSMIT)) {
 			strncpy(file, chn_data.buf[i], sizeof(chn_data.buf[i]));
-			ClearChannel(i, CHNL_STATE_TRANSMIT);
 			*id = i;
 			return 0;
 		}
@@ -95,7 +92,8 @@ void esp8266_HardReset()
 	delay_ms(1000);	
 }
 
-int8_t esp8266_WaitForOk(const char *command, unsigned int delay, uint8_t multiplier) 
+int8_t esp8266_WaitForOk(const char *command, unsigned int delay, uint8_t 
+			 multiplier) 
 {
 	int8_t ret;
 	char buf[BUF_MEM_SIZE];
@@ -103,7 +101,8 @@ int8_t esp8266_WaitForOk(const char *command, unsigned int delay, uint8_t multip
 	return ret;	
 }
 
-int8_t esp8266_WaitForAck(const char *command, unsigned int delay, uint8_t multiplier) 
+int8_t esp8266_WaitForAck(const uint8_t id, const char *command, 
+			  unsigned int delay, uint8_t multiplier) 
 {
 	int8_t ret;
 	uint8_t cnt = 0;
@@ -248,15 +247,15 @@ static inline void ParseDate(uint8_t *day, uint8_t *month, uint16_t *year,
 	char temp[5];
 	memset(temp, 0, sizeof(temp));
 	memset(temp_buf, 0, sizeof(temp_buf));
-	int ret = sscanf(buf, "%s %hu %s %hu %hu:%hu:%hu", temp, &temp_day, temp_buf, &temp_year,
-	       &temp_h, &temp_min, &temp_sec);
+	sscanf(buf, "%s %hu %s %hu %hu:%hu:%hu", temp, &temp_day, temp_buf, 
+	       &temp_year, &temp_h, &temp_min, &temp_sec);
 	*hour = (uint8_t)temp_h;
 	*minute = (uint8_t)temp_min;
 	*second = (uint8_t)temp_sec;
 	*day = (uint8_t)temp_day;
 	*year = temp_year;
 
-	if (!strcmp(temp_buf, "jan"))
+	if (!strcmp(temp_buf, "Jan"))
 		*month = 1;
 	else if (!strcmp(temp_buf, "Feb"))
 		*month = 2;
@@ -331,7 +330,7 @@ inline int8_t esp8266_WriteATCIPSEND(char *data, size_t data_size, uint8_t id)
 	if (ret)
 		return -2;
 
-	ret = esp8266_WaitForAck(temp, 100, 100);
+	ret = esp8266_WaitForAck(id, temp, 100, 100);
 	if (ret)
 		return -3;
 	
@@ -351,12 +350,15 @@ int8_t esp8266_WriteATCIPCLOSE(char *buf, uint8_t id)
 	sprintf(temp, "%u\r\n", id);
 	strcpy(buf, AT_CLOSE_SOCKET);
 	strcat(buf, temp);
+	
 	ret = esp8266_Send(buf, strlen(buf));
 	if (ret)
 		return -1;
-	ret = esp8266_WaitForAck(buf, 100, 10);
+	
+	ret = esp8266_WaitForAck(id, buf, 100, 10);
 	if (ret)
-		return -2;
+		ret = -2;
+
 	return ret;
 }
 
@@ -368,7 +370,7 @@ int8_t esp8266_WritePage(char *buf, size_t data_size, uint8_t id, uint8_t close)
 		return -1;
 	
 	if (close) {
-		ret = esp8266_WaitForAck("SEND\0", 100, 100);
+		ret = esp8266_WaitForAck(id, "SEND\0", 100, 100);
 		if (ret)
 			return -5;
 		esp8266_WriteATCIPCLOSE(buf, id);
@@ -440,8 +442,7 @@ static int8_t esp8266_state0(const uint8_t data, char *buf,
 		if (!ret) {
 			id = *(buf + (buf_len - 1 - strlen(CLOSED))) 
 			     - 48; 
-			ClearChannel(id, CHNL_STATE_OPENED);
-			ClearChannel(id, CHNL_STATE_TRANSMIT);	
+			ClearChannel(id, CHNL_STATE_TRANSMIT);
 		} 
 		break;
 
@@ -449,9 +450,7 @@ static int8_t esp8266_state0(const uint8_t data, char *buf,
 		ret = CompareLastBytes(buf, buf_len, CONNECT);
 		if (!ret) {
 			id = *(buf + (buf_len - 1 - strlen(CONNECT))) 
-			     - 48; 
-			SetChannel(id, CHNL_STATE_OPENED);	
-			ClearChannel(id, CHNL_STATE_TRANSMIT);
+			     - 48;
 		} 
 		break;
 	
@@ -469,30 +468,34 @@ static int8_t esp8266_state1(const uint8_t data, char *buf, const size_t buf_len
 	uint16_t id, len;
 	size_t s_len;
 	char file[HELP_BUF_SIZE];
-	cnt++;
+
 	if (!(data == 'P'))
 		return -1;
 	
 	ret = CompareLastBytes(buf, buf_len, " HTTP");	
 	if (ret) {
-		if (*cnt == buf_len) { //should be possible to remove it
-			*cnt = 0;
-			*state = 0;			
-		}
 		return -1;
 	}
-	*cnt = 0;	
+
 	MoveToSign(buf, buf_len, '+');
 	memset(file, 0, sizeof(file));
 	ret = sscanf(buf, "+IPD,%hu,%hu:GET /%s HTTP", &id, &len, file);
-	if (ret != 3)
+	if (ret != 3) {
+		*state = 0;
 		return -1;
+	}
 	s_len = strlen(file);
 	if (!strcmp(file, "HTTP"))
 		strcpy(file, "index.html");
 	SetChannelTransmit(file, id);
 
-	buffer_SetIgnore(&UART2_receive_buffer, len - s_len - 30); //20
+	if (len > s_len)	
+		len -= s_len;
+
+	if (len > 30)
+		len -= 30;
+
+	buffer_SetIgnore(&UART2_receive_buffer, len); //27
 	memset(buf, 0, buf_len);
 	*state = 0;
 	return 0;
