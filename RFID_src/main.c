@@ -154,10 +154,9 @@ int8_t WritePage(char *buf)
 		return 0;
 		
 	ret = f_open(&html_file, buf, FA_OPEN_EXISTING | FA_READ);
-	if (ret) {
-		esp8266_WriteATCIPCLOSE(buf, id);
+	if (ret) 
 		return -1;
-	}
+
 	file_size = f_size(&html_file);
 
 	while(file_size) {
@@ -167,7 +166,6 @@ int8_t WritePage(char *buf)
 			     (UINT *)&bytes_read);
 		
 		if (ret) {
-			esp8266_WriteATCIPCLOSE(buf, id);
 			f_close(&html_file);
 			return -2;
 		}

@@ -326,6 +326,9 @@ inline int8_t esp8266_WriteATCIPSEND(char *data, size_t data_size, uint8_t id)
 	strcpy(temp, AT_CIPSEND);
 	strcat(temp, temp_2);
 
+	if(CheckChannel(id, CHNL_STATE_CLOSED)) 
+		return -1;
+
 	ret = esp8266_Send(temp, strlen(temp));
 	if (ret)
 		return -2;
@@ -443,6 +446,7 @@ static int8_t esp8266_state0(const uint8_t data, char *buf,
 			id = *(buf + (buf_len - 1 - strlen(CLOSED))) 
 			     - 48; 
 			ClearChannel(id, CHNL_STATE_TRANSMIT);
+			SetChannel(id, CHNL_STATE_CLOSED);
 		} 
 		break;
 
@@ -493,7 +497,7 @@ static int8_t esp8266_state1(const uint8_t data, char *buf, const size_t buf_len
 		len -= s_len;
 
 	if (len > 30)
-		len -= 30;
+		len -= 30; //why?
 
 	buffer_SetIgnore(&UART2_receive_buffer, len); //27
 	memset(buf, 0, buf_len);
