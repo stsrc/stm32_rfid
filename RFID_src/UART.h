@@ -5,6 +5,7 @@
 #include <stm32f1xx_hal_rcc.h>
 #include <stm32f1xx_hal_uart.h>
 #include <stm32f1xx_hal_cortex.h>
+#include <math.h>
 
 #include "RTC.h"
 #include "tm_stm32f1_ili9341.h"

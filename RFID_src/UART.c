@@ -47,8 +47,6 @@ void USART2_IRQHandler(void)
 	}
 }
 
-#include <math.h>
-
 void UART_2_ChangeSpeed(unsigned int speed)
 {
 	uint16_t mantissa = 0;

@@ -108,9 +108,6 @@ int8_t esp8266_WaitForAck(const uint8_t id, const char *command,
 	uint8_t cnt = 0;
 	char buf[BUF_MEM_SIZE];
 	do {
-		if (!CheckChannel(id, CHNL_STATE_TRANSMIT))
-			return 3;
-
 		ret = esp8266_GetReply(command, "OK\0", buf, 10, 0);
 		if (!ret)
 			return 0;
@@ -336,7 +333,7 @@ inline int8_t esp8266_WriteATCIPSEND(char *data, size_t data_size, uint8_t id)
 	if (ret)
 		return -2;
 
-	ret = esp8266_WaitForAck(id, temp, 100, 100);
+	ret = esp8266_WaitForAck(id, temp, 100, 10);
 	if (ret)
 		return -3;
 	
@@ -364,22 +361,6 @@ int8_t esp8266_WriteATCIPCLOSE(char *buf, uint8_t id)
 	ret = esp8266_WaitForAck(id, buf, 5, 200);
 	
 	return ret;
-}
-
-int8_t esp8266_WritePage(char *buf, size_t data_size, uint8_t id, uint8_t close)
-{
-	int8_t ret;
-	ret = esp8266_WriteATCIPSEND(buf, data_size, id);
-	if (ret)
-		return -1;
-	
-	if (close) {
-		ret = esp8266_WaitForAck(id, "SEND\0", 100, 100);
-		if (ret)
-			return -5;
-		esp8266_WriteATCIPCLOSE(buf, id);
-	}
-	return 0;	
 }
 
 inline int8_t esp8266_GetIp(char *buf)
@@ -414,8 +395,7 @@ static int8_t CompareLastBytes(char *buffer, size_t size, const char *to_compare
 {
 	size_t len = strlen(to_compare);
 	size_t offset = size - len;
-	int8_t ret = strncmp(buffer + offset, to_compare, len);
-	return ret;	
+	return strncmp(buffer + offset, to_compare, len);
 }
 
 static void MoveToSign(char *buffer, size_t size, char sign)
@@ -429,9 +409,9 @@ static int8_t esp8266_state0(const uint8_t data, char *buf,
 {
 	int8_t ret = 0;
 	uint8_t id;
-	const char *IPD = "+IPD,";
-	const char *CLOSED = ",CLOSED";
-	const char *CONNECT = ",CONNECT";
+	const char *IPD = "+IPD,\0";
+	const char *CLOSED = ",CLOSED\0";
+	const char *CONNECT = ",CONNECT\0";
 
 	switch(data) {
 
@@ -473,21 +453,15 @@ static int8_t esp8266_state1(const uint8_t data, char *buf, const size_t buf_len
 	size_t s_len;
 	char file[HELP_BUF_SIZE];
 
-	if (!(data == 'P'))
+	ret = CompareLastBytes(buf, buf_len, "HTTP");	
+	if (ret) 
 		return -1;
-	
-	ret = CompareLastBytes(buf, buf_len, " HTTP");	
-	if (ret) {
-		return -1;
-	}
 
+	*state = 0;
 	MoveToSign(buf, buf_len, '+');
 	memset(file, 0, sizeof(file));
 	ret = sscanf(buf, "+IPD,%hu,%hu:GET /%s HTTP", &id, &len, file);
-	if (ret != 3) {
-		*state = 0;
-		return -1;
-	}
+
 	s_len = strlen(file);
 	if (!strcmp(file, "HTTP"))
 		strcpy(file, "index.html");
@@ -501,7 +475,6 @@ static int8_t esp8266_state1(const uint8_t data, char *buf, const size_t buf_len
 
 	buffer_SetIgnore(&UART2_receive_buffer, len); //27
 	memset(buf, 0, buf_len);
-	*state = 0;
 	return 0;
 }
 
@@ -544,7 +517,6 @@ static int8_t esp8266_CheckReset(uint8_t *state, char *buf, const size_t len)
 void esp8266_CheckInput(uint8_t data)
 {
 	static uint8_t state = 0;
-	static uint8_t cnt = 0;
 	static char buf[2 * HELP_BUF_SIZE];
 
 	int8_t ret;
@@ -554,27 +526,22 @@ void esp8266_CheckInput(uint8_t data)
 	MoveInsert(buf, sizeof(buf), data);
 	
 	ret = esp8266_CheckErrorsOnInput(data, &state, buf, sizeof(buf));
-	if (ret) { 
-		cnt = 0;
+	if (ret)
 		return;
-	}
 
 	ret = esp8266_CheckReset(&state, buf, sizeof(buf));
-	if (ret) {
-		cnt = 0;
+	if (ret)
 		return;
-	}
 
 	switch(state){
 	case 0:
 		ret = esp8266_state0(data, buf, sizeof(buf), &state);
-		if (!ret)
-			return;
 		break;
 	case 1:
-		ret = esp8266_state1(data, buf, sizeof(buf), &state, &cnt);
-		if (!ret)
-			return;
+		ret = esp8266_state1(data, buf, sizeof(buf), &state, NULL);
+		break;
+	default:
+		state = 0;
 		break;
 	}	
 }
