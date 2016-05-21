@@ -175,7 +175,7 @@ int8_t WritePage(char *buf)
 		buf[bytes_read] = '\0';
 		
 		if (cnt) {
-			ret = esp8266_WaitForAck(id, "SEND\0", 100, 100);
+			ret = esp8266_WaitForAck(id, "SEND\0", 100, 10);
 			if (ret) {
 				f_close(&html_file);
 				return -3;
@@ -191,7 +191,7 @@ int8_t WritePage(char *buf)
 		}
 	}
 	
-	ret = esp8266_WaitForAck(id, "SEND\0", 100, 100);
+	ret = esp8266_WaitForAck(id, "SEND\0", 100, 10);
 	if (ret) {
 		f_close(&html_file);
 		return -5;

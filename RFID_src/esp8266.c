@@ -108,6 +108,9 @@ int8_t esp8266_WaitForAck(const uint8_t id, const char *command,
 	uint8_t cnt = 0;
 	char buf[BUF_MEM_SIZE];
 	do {
+		if (!CheckChannel(id, CHNL_STATE_TRANSMIT))
+			return 3;
+
 		ret = esp8266_GetReply(command, "OK\0", buf, 10, 0);
 		if (!ret)
 			return 0;
@@ -326,7 +329,7 @@ inline int8_t esp8266_WriteATCIPSEND(char *data, size_t data_size, uint8_t id)
 	strcpy(temp, AT_CIPSEND);
 	strcat(temp, temp_2);
 
-	if(CheckChannel(id, CHNL_STATE_CLOSED)) 
+	if (!CheckChannel(id, CHNL_STATE_TRANSMIT)) 
 		return -1;
 
 	ret = esp8266_Send(temp, strlen(temp));
@@ -358,10 +361,8 @@ int8_t esp8266_WriteATCIPCLOSE(char *buf, uint8_t id)
 	if (ret)
 		return -1;
 	
-	ret = esp8266_WaitForAck(id, buf, 100, 10);
-	if (ret)
-		ret = -2;
-
+	ret = esp8266_WaitForAck(id, buf, 5, 200);
+	
 	return ret;
 }
 
@@ -446,7 +447,6 @@ static int8_t esp8266_state0(const uint8_t data, char *buf,
 			id = *(buf + (buf_len - 1 - strlen(CLOSED))) 
 			     - 48; 
 			ClearChannel(id, CHNL_STATE_TRANSMIT);
-			SetChannel(id, CHNL_STATE_CLOSED);
 		} 
 		break;
 
