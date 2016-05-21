@@ -35,6 +35,7 @@ void RFID_Init()
 	UART_1_init();
 	// init RFID data
 	memset(data, 0, RFID_DATA_SIZE);
+	RFID_Read();	
 }
 
 static uint8_t get_hex_from_ASCII(char input) {
@@ -78,13 +79,11 @@ uint8_t RFID_Read()
 uint8_t RFID_CardNumber(char* const buf)
 {	
 	uint8_t ret;
-	UART_1_set_irq(0);
 	ret = RFID_check_CRC();
 	if (ret) { 
 		data[12] = '\0';
 		strcpy(buf, &data[2]);
 	}
-	UART_1_set_irq(1);
 	return !ret;
 }
 

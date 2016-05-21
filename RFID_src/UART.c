@@ -23,7 +23,6 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 void USART1_IRQHandler(void) 
 {
 	HAL_UART_IRQHandler(&uart_1_handler);
-	RFID_Read();
 }
 
 void USART2_IRQHandler(void) 
@@ -82,8 +81,6 @@ HAL_StatusTypeDef UART_1_init()
 	uart_1_handler.Instance = USART1;
 		
 	ret = HAL_UART_Init(&uart_1_handler);
-	if (ret == HAL_OK)
-		RFID_Read();
 	return ret;
 }
 

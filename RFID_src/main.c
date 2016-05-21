@@ -140,6 +140,39 @@ int8_t CheckFormat(char *buf)
 	}
 }
 
+int8_t ChangeRFIDSettings(char *buf)
+{
+	FIL file;
+	int8_t ret = 0;
+	char script[16];
+	char id[16];
+	char mod;
+	char *temp;
+	uint bytes_read;
+	sscanf(buf, "%s?ID_List=%s&MOD_List=%c", script, id, &mod);
+	
+	ret = f_open(&file, "ID_list.txt", FA_OPEN_EXISTING | FA_READ | FA_WRITE);
+	if (ret)
+		return -1;
+
+	ret = f_read(&file, buf, BUF_MEM_SIZE - 1, &bytes_read);
+	if (ret) {
+		f_close(&file);
+		return -2;
+	}
+	temp = strstr(buf, id);
+	
+	if (temp != NULL) {
+		temp += strlen(id) + 2;
+		*temp = mod;
+		ret = f_puts(buf, &file);
+	}
+
+	f_close(&file);	
+	strcpy(buf, "select.php");
+	return ret;
+}
+
 int8_t WritePage(char *buf)
 {
 	uint8_t id;
@@ -152,7 +185,14 @@ int8_t WritePage(char *buf)
 	ret = esp8266_ScanForFile(buf, &id);
 	if (ret)
 		return 0;
-		
+
+	ret = CheckFormat(buf);
+	if (ret) {
+		ret = ChangeRFIDSettings(buf);
+		if (ret)
+			return -1;
+	}	
+
 	ret = f_open(&html_file, buf, FA_OPEN_EXISTING | FA_READ);
 	if (ret) 
 		return -1;
@@ -226,6 +266,41 @@ void CheckWiFi()
 	}
 }
 
+static int8_t CheckNewRFIDHistory(char *buf)
+{
+	FIL file;
+	int8_t ret = 0; 
+	char temp[50];
+	uint8_t month, day, hour, min, sec;
+	uint16_t year;
+	unsigned int bytes_written;
+
+	if (READ_BIT(UART_1_flag, ready_bit)) {
+		memset(buf, 0, BUF_MEM_SIZE);
+		CLEAR_BIT(UART_1_flag, ready_bit);
+		RFID_CardNumber(temp);
+		
+		RTC_GetDate(&year, &month, &day, &hour, &min, &sec);
+		sprintf(buf, "%02u.%02u.%04hu,%02u:%02u:%02u,%s;", day, month, year, hour, min, sec,temp);
+		
+		ret = f_open(&file, "history.txt", FA_OPEN_ALWAYS | FA_READ | FA_WRITE);
+		if (ret)
+			return -1;
+	
+		ret = f_lseek(&file, f_size(&file));
+		if (ret) {
+			f_close(&file);
+			return -2;
+		}
+
+		ret = f_write(&file, buf, strlen(buf), &bytes_written);
+		
+		f_close(&file);
+		LcdWrite(buf, 0, 60);
+	}
+	return ret;	
+}
+
 FATFS SDFatFs;
 int main(void)
 {
@@ -254,6 +329,8 @@ int main(void)
 		WritePage(buf);
 		PrintDate();
 		CheckWiFi();
+		ret = CheckNewRFIDHistory(buf);	
+		CheckError("CheckNEWRFIDHistory!", ret);
 	}
 	return 0;
 }

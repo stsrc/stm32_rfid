@@ -48,7 +48,6 @@
 #include <string.h>
 #include <stdint.h>
 #include "UART.h"
-#include "delay.h"
 
 void RFID_Init();
 uint8_t RFID_CardNumber(char* const buf);
