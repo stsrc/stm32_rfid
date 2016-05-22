@@ -132,12 +132,15 @@ int8_t WiFi_Init()
  */
 int8_t CheckFormat(char *buf)
 {
-	char *ptr = strstr(buf, "?");
+	char *ptr = strstr(buf, "z.html?");
 	if (ptr) {
 		return 1;
-	} else {	
-		return 0;
+	} 
+	ptr = strstr(buf, "w.html");
+	if (ptr) {
+		return 2;
 	}
+	return 0;
 }
 
 int8_t ChangeRFIDSettings(char *buf)
@@ -191,25 +194,13 @@ int8_t ChangeRFIDSettings(char *buf)
 	return 0;
 }
 
-int8_t WritePage(char *buf)
+static int8_t SendPage(char *buf, const uint8_t id) 
 {
-	uint8_t id;
-	uint8_t cnt = 0;
 	int8_t ret;
+	uint8_t cnt = 0;
 	FIL html_file;
 	size_t bytes_read, to_read;
 	volatile size_t file_size = 0;
-
-	ret = esp8266_ScanForFile(buf, &id);
-	if (ret)
-		return 0;
-
-	ret = CheckFormat(buf);
-	if (ret) {
-		ret = ChangeRFIDSettings(buf);
-		if (ret)
-			return -1;
-	}	
 
 	ret = f_open(&html_file, buf, FA_OPEN_EXISTING | FA_READ);
 	if (ret) {
@@ -263,6 +254,83 @@ int8_t WritePage(char *buf)
 		return -7;
 
 	return 0;
+
+}
+
+static int8_t AddNewRFIDCard(char *buf) 
+{
+	char temp[11];
+	FIL file;
+	int8_t ret; 
+	uint bytes_cnt;
+	char *ptr;
+	
+	CLEAR_BIT(UART_1_flag, ready_bit);
+
+	while(!(READ_BIT(UART_1_flag, ready_bit))) {
+		delay_ms(100);
+	}
+
+	CLEAR_BIT(UART_1_flag, ready_bit);
+	
+	RFID_CardNumber(temp); 
+
+	ret = f_open(&file, "ID_list.txt", FA_OPEN_EXISTING | FA_READ | FA_WRITE);
+	if (ret)
+		return -1;
+
+	
+	memset(buf, 0, BUF_MEM_SIZE);
+	ret = f_read(&file, buf, BUF_MEM_SIZE - 1, &bytes_cnt);
+	if (ret) {
+		f_close(&file);
+		return -2;
+	}
+	
+	ptr = strstr(buf, temp);
+	if (ptr) {
+		f_close(&file);
+		strcpy(buf, "zarzadzaj.html");
+		return 0;
+	}
+	
+	ret = f_lseek(&file, 0);
+	
+	strcat(buf, ";");
+	strcat(buf, temp);
+	strcat(buf, ";2");
+	
+	ret = f_write(&file, buf, strlen(buf), &bytes_cnt);
+	f_close(&file);
+	if (ret < 0) {
+		return -1;	
+	}
+
+	strcpy(buf, "zarzadzaj.html");
+	return 0;
+}
+
+int8_t PageRequest(char *buf)
+{
+	uint8_t id;
+	int8_t ret;
+
+	ret = esp8266_ScanForFile(buf, &id);
+	if (ret)
+		return 0;
+
+	ret = CheckFormat(buf);
+	if (ret) {
+		if (ret == 1) 
+			ChangeRFIDSettings(buf);
+		
+		else if (ret == 2)
+			AddNewRFIDCard(buf);
+		
+		else 
+			strcpy(buf, "index.html");
+	}
+	return SendPage(buf, id);
 }
 
 
@@ -285,37 +353,80 @@ void CheckWiFi()
 	}
 }
 
-static int8_t CheckNewRFIDHistory(char *buf)
+static int8_t SaveRFIDToHistory(char *buf, const char *temp, size_t temp_len)
 {
 	FIL file;
-	int8_t ret = 0; 
-	char temp[50];
+	int8_t ret = 0;
 	uint8_t month, day, hour, min, sec;
 	uint16_t year;
 	unsigned int bytes_written;
 
-	if (READ_BIT(UART_1_flag, ready_bit)) {
-		memset(buf, 0, BUF_MEM_SIZE);
-		CLEAR_BIT(UART_1_flag, ready_bit);
-		RFID_CardNumber(temp);
-		
-		RTC_GetDate(&year, &month, &day, &hour, &min, &sec);
-		sprintf(buf, "%02u.%02u.%04hu,%02u:%02u:%02u,%s;", day, month, year, hour, min, sec,temp);
-		
-		ret = f_open(&file, "history.txt", FA_OPEN_ALWAYS | FA_READ | FA_WRITE);
-		if (ret)
-			return -1;
+	RTC_GetDate(&year, &month, &day, &hour, &min, &sec);
+	sprintf(buf, "%02u.%02u.%04hu,%02u:%02u:%02u,%s;", day, month, year, hour, min, sec, temp);
 	
-		ret = f_lseek(&file, f_size(&file));
-		if (ret) {
-			f_close(&file);
-			return -2;
-		}
+	ret = f_open(&file, "history.txt", FA_OPEN_ALWAYS | FA_READ | FA_WRITE);
+	if (ret)			return -1;
+			return -1;
 
-		ret = f_write(&file, buf, strlen(buf), &bytes_written);
-		
+	ret = f_lseek(&file, f_size(&file));
+	if (ret) {
 		f_close(&file);
-		LcdWrite(buf, 0, 60);
+		return -2;
+	}
+	
+	ret = f_write(&file, buf, strlen(buf), &bytes_written);
+		
+	f_close(&file);
+
+	return 0;
+}
+
+static int8_t PresentRFIDPermission(char *buf, const char *RFID_ID)
+{
+	FIL file;
+	int8_t ret; 
+	uint bytes_read;
+	char *temp; 
+
+	ret = f_open(&file, "ID_list.txt", FA_OPEN_EXISTING | FA_READ);
+	if (ret)
+		return -1;
+
+	
+	memset(buf, 0, BUF_MEM_SIZE);
+	ret = f_read(&file, buf, BUF_MEM_SIZE - 1, &bytes_read);
+	if (ret) {
+		f_close(&file);
+		return -2;
+	}
+
+	temp = strstr(buf, RFID_ID);
+	temp += 11;
+	
+	if (*temp == '0')
+		TM_ILI9341_DrawFilledRectangle(0, 100, 239, 319, ILI9341_COLOR_RED);
+	
+	else if (*temp == '1')
+		TM_ILI9341_DrawFilledRectangle(0, 100, 239, 319, ILI9341_COLOR_GREEN);
+	
+	else 
+		TM_ILI9341_DrawFilledRectangle(0, 100, 239, 319, ILI9341_COLOR_GRAY);
+	f_close(&file);
+	return 0;
+
+}
+
+static int8_t CheckNewRFID(char *buf)
+{
+	int8_t ret = 0; 
+	char temp[50];
+
+	if (READ_BIT(UART_1_flag, ready_bit)) {
+		CLEAR_BIT(UART_1_flag, ready_bit);
+		memset(buf, 0, BUF_MEM_SIZE);
+		RFID_CardNumber(temp);
+		ret = SaveRFIDToHistory(buf, temp, sizeof(temp));	
+		PresentRFIDPermission(buf, temp); 
 	}
 	return ret;	
 }
@@ -345,11 +456,10 @@ int main(void)
 	ret = esp8266_MakeAsServer();
 	CheckError("esp8266_MakeAsServer failed!\0", ret);
 	while(1) {
-		WritePage(buf);
+		PageRequest(buf);
 		PrintDate();
 		CheckWiFi();
-		ret = CheckNewRFIDHistory(buf);	
-		CheckError("CheckNEWRFIDHistory!", ret);
+		CheckNewRFID(buf);	
 	}
 	return 0;
 }
