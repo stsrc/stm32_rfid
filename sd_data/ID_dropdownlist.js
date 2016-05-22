@@ -7,7 +7,11 @@ function createDropDownList(text)
 	temp = text.split(";");
 
 	while(temp[cnt]) {
-		element+= "<option value=\"" + cnt/2 + "\">" + temp[cnt] + "</option>";
+		element += "<option value=\"";
+		element +=  temp[cnt];
+		element += "\">";
+		element += temp[cnt];
+		element += "</option>";
 		cnt += 2;
 	}
 

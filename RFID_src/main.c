@@ -132,7 +132,7 @@ int8_t WiFi_Init()
  */
 int8_t CheckFormat(char *buf)
 {
-	char *ptr = strstr(buf, ".php?");
+	char *ptr = strstr(buf, "?");
 	if (ptr) {
 		return 1;
 	} else {	
@@ -144,33 +144,51 @@ int8_t ChangeRFIDSettings(char *buf)
 {
 	FIL file;
 	int8_t ret = 0;
-	char script[16];
 	char id[16];
+	uint16_t cnt;
 	char mod;
 	char *temp;
 	uint bytes_read;
-	sscanf(buf, "%s?ID_List=%s&MOD_List=%c", script, id, &mod);
+
+	memset(id, 0, sizeof(id));
+	temp = strstr(buf, "ID_List=");
+	temp += strlen("ID_List=");
+	temp = strtok(temp, "&");
+	strcpy(id, temp);
+	temp += strlen(id) + strlen("&MOD_List=");
+	mod = *temp;
 	
 	ret = f_open(&file, "ID_list.txt", FA_OPEN_EXISTING | FA_READ | FA_WRITE);
 	if (ret)
 		return -1;
 
+	memset(buf, 0, BUF_MEM_SIZE);
 	ret = f_read(&file, buf, BUF_MEM_SIZE - 1, &bytes_read);
 	if (ret) {
 		f_close(&file);
 		return -2;
 	}
-	temp = strstr(buf, id);
 	
-	if (temp != NULL) {
-		temp += strlen(id) + 2;
-		*temp = mod;
-		ret = f_puts(buf, &file);
+	sscanf(id, "%hu", &cnt);
+	temp = buf;
+	
+	temp += 11 + 13 * cnt;
+	*temp = mod;
+	ret = f_lseek(&file, 0);
+	if (ret) {
+		f_close(&file);
+		return -3;
+	}
+
+	ret = f_puts(buf, &file);
+	if (ret < 0) {
+		f_close(&file);
+		return -4;
 	}
 
 	f_close(&file);	
-	strcpy(buf, "select.php");
-	return ret;
+	strcpy(buf, "zarzadzaj.html");
+	return 0;
 }
 
 int8_t WritePage(char *buf)
@@ -194,8 +212,9 @@ int8_t WritePage(char *buf)
 	}	
 
 	ret = f_open(&html_file, buf, FA_OPEN_EXISTING | FA_READ);
-	if (ret) 
+	if (ret) {
 		return -1;
+	}
 
 	file_size = f_size(&html_file);
 

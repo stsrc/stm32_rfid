@@ -1,9 +1,12 @@
 function checkPermission(perm)
 {
-	if (perm == "0")
+	if (perm == "1") {
 		return "<b><font color=\"green\">Dopuszczony</font></b>";
-	else (perm == "1")
+	} else if (perm == "0") {
 		return "<b><font color=\"red\">Zablokowany</font></b>";
+	} else if (perm == "2") {
+		return "<b><font color=\"gray\">Nieznany</font></b>";
+	}
 }
 
 

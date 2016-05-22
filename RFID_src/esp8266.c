@@ -21,9 +21,9 @@
 #define CHNL_STATE_OPENED	8
 #define CHNL_STATE_CLOSED	4
 #define CHNL_STATE_TRANSMIT	2
-#define CHNL_STATE_CLEAR	1
 
 #define HELP_BUF_SIZE 32
+#define HELP_BUF_SIZE_2 64
 
 struct channel_data {
 	char buf[5][HELP_BUF_SIZE];
@@ -517,7 +517,7 @@ static int8_t esp8266_CheckReset(uint8_t *state, char *buf, const size_t len)
 void esp8266_CheckInput(uint8_t data)
 {
 	static uint8_t state = 0;
-	static char buf[2 * HELP_BUF_SIZE];
+	static char buf[HELP_BUF_SIZE_2];
 
 	int8_t ret;
 	if (!do_it)
