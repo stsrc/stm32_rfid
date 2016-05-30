@@ -27,10 +27,8 @@ void TIM2_IRQHandler(void)
 
 		if (turn_on_RFID) {
 			turn_on_RFID--;
-			if (!turn_on_RFID) {
-				//UART_1_set_irq(1);
+			if (!turn_on_RFID)
 				RFID_Read();
-			}
 		}
 	}
 }

@@ -87,26 +87,36 @@ HAL_StatusTypeDef UART_1_init()
 void HAL_UART_MspInit(UART_HandleTypeDef *huart) 
 {
 	GPIO_InitTypeDef init_gpio;
+	
 	if (huart->Instance == USART1) 
 		init_gpio.Pin = GPIO_PIN_9;
+	
 	else if (huart->Instance == USART2) 
 		init_gpio.Pin = GPIO_PIN_2;
+	
 	init_gpio.Pull = GPIO_NOPULL;
 	init_gpio.Mode = GPIO_MODE_AF_PP;
 	init_gpio.Speed = GPIO_SPEED_FREQ_HIGH;
+	
 	__HAL_RCC_GPIOA_CLK_ENABLE();
+	
 	HAL_GPIO_Init(GPIOA, &init_gpio);	
+	
 	if (huart->Instance == USART1) 
 		init_gpio.Pin = GPIO_PIN_10;
+	
 	else if (huart->Instance == USART2) 
 		init_gpio.Pin = GPIO_PIN_3;
+	
 	init_gpio.Pull = GPIO_PULLDOWN;
 	init_gpio.Mode = GPIO_MODE_AF_INPUT;
+	
 	HAL_GPIO_Init(GPIOA, &init_gpio);
 	
 	if (huart->Instance == USART1) { 
 		__HAL_RCC_USART1_CLK_ENABLE();
 		HAL_NVIC_EnableIRQ(USART1_IRQn);
+	
 	} else if (huart->Instance == USART2) {
 		__HAL_RCC_USART2_CLK_ENABLE();
 		HAL_NVIC_EnableIRQ(USART2_IRQn);
