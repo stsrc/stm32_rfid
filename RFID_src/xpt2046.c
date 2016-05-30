@@ -15,8 +15,6 @@
 #define XPT2046_CS_RESET	HAL_GPIO_WritePin(XPT2046_CS_PORT, XPT2046_CS_PIN, GPIO_PIN_RESET)
 #endif /* PT2046_CS_SET */ 
 
-__IO uint8_t xpt2046_irq_flag = 0;
-
 struct cmd_input {
 	uint8_t START;
 	uint8_t A2;
@@ -28,9 +26,16 @@ struct cmd_input {
 	uint8_t PID0;
 };
 
-void EXTI3_IRQHandler(){
-	xpt2046_irq_flag = 1;	
+void xpt2046_InterruptOn(void)
+{
+	EXTI->IMR |= EXTI_IMR_MR3;
+}
+
+void EXTI3_IRQHandler(){	
+	TM_ILI9341_DisplayOn();
+	TIM2_TurnOffLCDAfterTimeInterval(10);	
 	EXTI->PR |= EXTI_PR_PR3;
+	EXTI->IMR &= ~EXTI_IMR_MR3;
 }
 
 static uint8_t touch_generate_command(struct cmd_input *in)

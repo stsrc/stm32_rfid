@@ -13,7 +13,7 @@ OBJS += stm32f1xx_hal.o stm32f1xx_hal_uart.o xpt2046.o FatFs/diskio.o FatFs/ff.o
 OBJS += FatFs/sd_diskio.o FatFs/stm3210c_eval_sd.o delay.o stm32f1xx_hal_tim.o 
 OBJS += stm32f1xx_hal_tim_ex.o RTC.o   
 OBJS += FatFs/option/unicode.o $(STARTUP) 
-OBJS += UART.o RFID.o simple_buffer.o esp8266.o
+OBJS += UART.o RFID.o simple_buffer.o esp8266.o TIM2.o
 # include common make file
 
 include $(TEMPLATEROOT)/Makefile.common

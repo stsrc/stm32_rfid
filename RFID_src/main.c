@@ -11,31 +11,18 @@
 #include "RTC.h"
 #include "delay.h"
 #include "esp8266.h"
+#include "TIM2.h"
 #include <string.h>
-
-void set_leds()
-{
-	GPIO_InitTypeDef gpio_str = 
-	{
-		GPIO_PIN_8 | GPIO_PIN_9,
-		GPIO_MODE_OUTPUT_PP,
-		GPIO_NOPULL,
-		GPIO_SPEED_FREQ_MEDIUM		
-	};
-	
-	__HAL_RCC_GPIOC_CLK_ENABLE();
-	HAL_GPIO_Init(GPIOC, &gpio_str);
-	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9, GPIO_PIN_RESET);
-}
 
 void SetInterrupts()
 {
 	HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
-	HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 13, 0);
+	HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 12, 0);
 	HAL_NVIC_SetPriority(EXTI3_IRQn, 15, 0);
 	HAL_NVIC_SetPriority(USART1_IRQn, 1, 0);
 	HAL_NVIC_SetPriority(USART2_IRQn, 0, 0);
 	HAL_NVIC_SetPriority(RTC_IRQn, 14, 0);
+	HAL_NVIC_SetPriority(TIM2_IRQn, 13, 0);
 }
 
 void PrintTime() 
@@ -401,19 +388,24 @@ static int8_t PresentRFIDPermission(char *buf, const char *RFID_ID)
 	}
 
 	temp = strstr(buf, RFID_ID);
-	temp += 11;
-	
-	if (*temp == '0')
+	if (!temp) {
 		TM_ILI9341_DrawFilledRectangle(0, 100, 239, 319, ILI9341_COLOR_RED);
-	
-	else if (*temp == '1')
-		TM_ILI9341_DrawFilledRectangle(0, 100, 239, 319, ILI9341_COLOR_GREEN);
-	
-	else 
-		TM_ILI9341_DrawFilledRectangle(0, 100, 239, 319, ILI9341_COLOR_GRAY);
+		LcdWrite("Brak karty w systemie!", 0, 100);
+	} else {
+		temp += 11;
+		if (*temp == '0') {
+			TM_ILI9341_DrawFilledRectangle(0, 100, 239, 319, 
+						      ILI9341_COLOR_RED);
+			LcdWrite("Brak dostepu!", 0, 100); 
+		} else if (*temp == '1') {
+			TM_ILI9341_DrawFilledRectangle(0, 100, 239, 319, 
+						      ILI9341_COLOR_GREEN);
+			LcdWrite("Prosze wejsc.", 0, 100);
+		}
+	} 
+
 	f_close(&file);
 	return 0;
-
 }
 
 static int8_t CheckNewRFID(char *buf)
@@ -424,10 +416,24 @@ static int8_t CheckNewRFID(char *buf)
 	if (READ_BIT(UART_1_flag, ready_bit)) {
 		CLEAR_BIT(UART_1_flag, ready_bit);
 		memset(buf, 0, BUF_MEM_SIZE);
+		TM_ILI9341_DisplayOn();
 		RFID_CardNumber(temp);
 		ret = SaveRFIDToHistory(buf, temp, sizeof(temp));	
 		PresentRFIDPermission(buf, temp); 
+	} else if (READ_BIT(UART_1_flag, error_bit)) {
+		CLEAR_BIT(UART_1_flag, error_bit);
+		TM_ILI9341_DrawFilledRectangle(0, 100, 239, 319, 
+					      ILI9341_COLOR_RED);
+		LcdWrite("Blad przy odczycie!", 0, 100);
+		LcdWrite("Prosze sprobowac ponownie za 5 sekund!", 0, 120);		
+	} else { 
+		return 0;
 	}
+	TIM2_TurnOnRFIDAfterTimeInterval(5);
+	TIM2_ClearLCDAfterTimeInterval(5);
+	TIM2_TurnOffLCDAfterTimeInterval(10);
+	TM_ILI9341_DisplayOn();
+
 	return ret;	
 }
 
@@ -440,10 +446,10 @@ int main(void)
 
 	memset(org, 0, 5);
 	SetInterrupts();
-	set_leds();
 	TM_ILI9341_Init();
 	delay_init();
 	xpt2046_init();
+	TIM2_Init();
 	RFID_Init();
 	RTC_Init();
 	ret = FATFS_Init(&SDFatFs, org);

@@ -7,10 +7,7 @@ void RTC_IRQHandler() {
 	RTC_second_flag = 1;
 	RTC->CRL &= ~RTC_CRL_SECF;
 	cnt++;
-	if (cnt == 5) {
-		RFID_Read();
-		cnt = 0;
-	}
+	cnt %= 5;
 }
 
 void RTC_SetDate(uint16_t year, uint8_t month, uint8_t day, uint8_t hour, 
