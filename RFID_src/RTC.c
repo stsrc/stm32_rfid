@@ -3,11 +3,8 @@
 __IO uint8_t RTC_second_flag = 0;
 
 void RTC_IRQHandler() {
-	static uint8_t cnt = 0;
 	RTC_second_flag = 1;
 	RTC->CRL &= ~RTC_CRL_SECF;
-	cnt++;
-	cnt %= 5;
 }
 
 void RTC_SetDate(uint16_t year, uint8_t month, uint8_t day, uint8_t hour, 

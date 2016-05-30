@@ -27,8 +27,9 @@ void TIM2_IRQHandler(void)
 
 		if (turn_on_RFID) {
 			turn_on_RFID--;
-			if (!turn_on_RFID)
+			if (!turn_on_RFID) {
 				RFID_Read();
+			}
 		}
 	}
 }
@@ -63,4 +64,6 @@ void TIM2_TurnOffLCDAfterTimeInterval(uint8_t sec)
 void TIM2_TurnOnRFIDAfterTimeInterval(uint8_t sec)
 {
 	turn_on_RFID = sec;
+//	UART_1_set_irq(0);
+	CLEAR_BIT(UART_1_flag, error_bit);
 }

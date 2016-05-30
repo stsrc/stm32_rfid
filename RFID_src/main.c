@@ -292,8 +292,10 @@ static int8_t AddNewRFIDCard(char *buf)
 	if (ret < 0) {
 		return -1;	
 	}
-
+	
 	strcpy(buf, "zarzadzaj.html");
+
+	TIM2_TurnOnRFIDAfterTimeInterval(1);
 	return 0;
 }
 
@@ -352,8 +354,8 @@ static int8_t SaveRFIDToHistory(char *buf, const char *temp, size_t temp_len)
 	sprintf(buf, "%02u.%02u.%04hu,%02u:%02u:%02u,%s;", day, month, year, hour, min, sec, temp);
 	
 	ret = f_open(&file, "history.txt", FA_OPEN_ALWAYS | FA_READ | FA_WRITE);
-	if (ret)			return -1;
-			return -1;
+	if (ret)
+		return -1;
 
 	ret = f_lseek(&file, f_size(&file));
 	if (ret) {
@@ -420,19 +422,14 @@ static int8_t CheckNewRFID(char *buf)
 		RFID_CardNumber(temp);
 		ret = SaveRFIDToHistory(buf, temp, sizeof(temp));	
 		PresentRFIDPermission(buf, temp); 
+		TIM2_TurnOnRFIDAfterTimeInterval(4);
+		TIM2_ClearLCDAfterTimeInterval(5);
+		TIM2_TurnOffLCDAfterTimeInterval(10);
+		TM_ILI9341_DisplayOn();
 	} else if (READ_BIT(UART_1_flag, error_bit)) {
-		CLEAR_BIT(UART_1_flag, error_bit);
-		TM_ILI9341_DrawFilledRectangle(0, 100, 239, 319, 
-					      ILI9341_COLOR_RED);
-		LcdWrite("Blad przy odczycie!", 0, 100);
-		LcdWrite("Prosze sprobowac ponownie za 5 sekund!", 0, 120);		
-	} else { 
-		return 0;
-	}
-	TIM2_TurnOnRFIDAfterTimeInterval(5);
-	TIM2_ClearLCDAfterTimeInterval(5);
-	TIM2_TurnOffLCDAfterTimeInterval(10);
-	TM_ILI9341_DisplayOn();
+		CLEAR_BIT(UART_1_flag, error_bit);	
+		TIM2_TurnOnRFIDAfterTimeInterval(1);
+	} 
 
 	return ret;	
 }
@@ -449,7 +446,6 @@ int main(void)
 	TM_ILI9341_Init();
 	delay_init();
 	xpt2046_init();
-	TIM2_Init();
 	RFID_Init();
 	RTC_Init();
 	ret = FATFS_Init(&SDFatFs, org);
@@ -461,6 +457,7 @@ int main(void)
 	GetIp(buf);
 	ret = esp8266_MakeAsServer();
 	CheckError("esp8266_MakeAsServer failed!\0", ret);
+	TIM2_Init();
 	while(1) {
 		PageRequest(buf);
 		PrintDate();
