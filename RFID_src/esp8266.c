@@ -106,23 +106,21 @@ int8_t esp8266_WaitForAck(const uint8_t id, const char *command,
 {
 	int8_t ret;
 	uint8_t cnt = 0;
-	char buf[BUF_MEM_SIZE];
 	do {
-		ret = esp8266_GetReply(command, "OK\0", buf, 10, 0);
+		ret = esp8266_GetReply(command, "OK\0", NULL, 10, 0);
 		if (!ret)
 			return 0;
 		
 		if (ret) {
-			ret = esp8266_GetReply(command, "FAIL\0", buf, 10, 0);
+			ret = esp8266_GetReply(command, "FAIL\0", NULL, 10, 0);
 			if (!ret)
 				return 1;
 		}
 
 		if (ret) {
-			ret = esp8266_GetReply(command, "ERROR\0", buf, 10, 0);
+			ret = esp8266_GetReply(command, "ERROR\0", NULL, 10, 0);
 			if (!ret)
-				return 2;
-		
+				return 2;	
 		}
 		
 		if (ret)
@@ -432,10 +430,6 @@ static int8_t esp8266_state0(const uint8_t data, char *buf,
 
 	case 'T':
 		ret = CompareLastBytes(buf, buf_len, CONNECT);
-		if (!ret) {
-			id = *(buf + (buf_len - 1 - strlen(CONNECT))) 
-			     - 48;
-		} 
 		break;
 	
 	default:
@@ -450,30 +444,30 @@ static int8_t esp8266_state1(const uint8_t data, char *buf, const size_t buf_len
 {
 	int8_t ret;
 	uint16_t id, len;
-	size_t s_len;
 	char file[HELP_BUF_SIZE];
-
+	
 	ret = CompareLastBytes(buf, buf_len, "HTTP");	
 	if (ret) 
 		return -1;
 
 	*state = 0;
 	MoveToSign(buf, buf_len, '+');
+	buf += strlen("+IPD,");
+	if (*buf == ',')
+		buf++;
+	sscanf(buf, "%hu", &id);
+	buf += 2;
+	sscanf(buf, "%hu", &len);
+	buf = strstr(buf, "/");
+	buf++;
 	memset(file, 0, sizeof(file));
-	ret = sscanf(buf, "+IPD,%hu,%hu:GET /%s HTTP", &id, &len, file);
+	sscanf(buf, "%s", file);
 
-	s_len = strlen(file);
-	if (!strcmp(file, "HTTP"))
-		strcpy(file, "index.html");
 	SetChannelTransmit(file, id);
 
-	if (len > s_len)	
-		len -= s_len;
-
-	if (len > 30)
-		len -= 30; //why?
-
-	buffer_SetIgnore(&UART2_receive_buffer, len); //27
+	//TODO len
+	len -= 40;
+//	buffer_SetIgnore(&UART2_receive_buffer, len); 
 	memset(buf, 0, buf_len);
 	return 0;
 }
@@ -524,11 +518,19 @@ void esp8266_CheckInput(uint8_t data)
 		return;
 	
 	MoveInsert(buf, sizeof(buf), data);
-	
+
+	/*
+	 * Somehow sometimes I got some strange values (not ASCII signs!) on input.
+	 * If it happens - reset
+	 */	
 	ret = esp8266_CheckErrorsOnInput(data, &state, buf, sizeof(buf));
 	if (ret)
 		return;
 
+	/*
+	 * Sometimes esp8266 resets itself due to I don't know.
+	 * Reset of wifi etc. applied
+	 */
 	ret = esp8266_CheckReset(&state, buf, sizeof(buf));
 	if (ret)
 		return;

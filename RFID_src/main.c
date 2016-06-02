@@ -191,6 +191,7 @@ static int8_t SendPage(char *buf, const uint8_t id)
 
 	ret = f_open(&html_file, buf, FA_OPEN_EXISTING | FA_READ);
 	if (ret) {
+		esp8266_WriteATCIPCLOSE(buf, id);
 		return -1;
 	}
 
@@ -203,6 +204,7 @@ static int8_t SendPage(char *buf, const uint8_t id)
 			     (UINT *)&bytes_read);
 		
 		if (ret) {
+			esp8266_WriteATCIPCLOSE(buf, id);
 			f_close(&html_file);
 			return -2;
 		}
@@ -241,7 +243,6 @@ static int8_t SendPage(char *buf, const uint8_t id)
 		return -7;
 
 	return 0;
-
 }
 
 static int8_t AddNewRFIDCard(char *buf) 
@@ -337,8 +338,9 @@ void CheckWiFi()
 		ret = esp8266_MakeAsServer();
 		CheckError("esp8266_MakeAsServer failed!\0", ret);
 		esp8266_ClearResetFlag();
-	} else if (buffer_IsFull(&UART2_receive_buffer)) {
-		buffer_Reset(&UART2_receive_buffer);
+		if (buffer_IsFull(&UART2_receive_buffer)) {
+			buffer_Reset(&UART2_receive_buffer);
+		}
 	}
 }
 

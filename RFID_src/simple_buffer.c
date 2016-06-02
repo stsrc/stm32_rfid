@@ -189,7 +189,11 @@ int8_t buffer_SearchGetLabel(struct simple_buffer *buf, const char *label,
 		buffer_ClearLock(buf);
 		return ret;
 	}
-	ret = buffer_CopyToNearestWord(buf, output, limiter);
+	if (output)
+		ret = buffer_CopyToNearestWord(buf, output, limiter);
+	else
+		ret = buffer_MoveTailToLabel(buf, limiter);
+
 	if (ret)
 		buf->tail = tail_old;
 	buffer_ClearLock(buf);
