@@ -11,6 +11,19 @@
 #include "UART.h"
 #include "RFID.h"
 
+
+/**
+ * @addtogroup RFID_System libraries
+ * @{
+ */
+
+/**
+ * @defgroup RTC
+ * @brief RTC library.
+ * @{
+ */
+
+
 extern __IO uint8_t RTC_second_flag;
 
 HAL_StatusTypeDef RTC_Init();

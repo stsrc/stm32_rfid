@@ -3,6 +3,18 @@
 #include <stm32f1xx.h>
 #include <core_cm3.h>
 #include <stm32f1xx_hal.h>
+
+/**
+ * @addtogroup RFID_System libraries
+ * @{
+ */
+
+/**
+ * @defgroup Delay
+ * @brief Delay library
+ * @{
+ */
+
 /**
  * @brief delay initalization
  */

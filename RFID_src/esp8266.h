@@ -8,6 +8,18 @@
 #include "secret_password.h"
 
 /**
+ * @addtogroup RFID_System libraries
+ * @{
+ */
+
+/**
+ * @defgroup esp8266
+ * @brief esp8266 library
+ * @{
+ */
+
+
+/**
  * @brief Initialization of esp8266
  *
  * Function sets esp8266 pins, turns on UART2, 
@@ -17,7 +29,11 @@
 int8_t esp8266_Init(); 
 
 /**
- * @brief Function gets date.
+ * @brief Function to get date from Internet by WWW.
+ *
+ * Function sends page request to google.com. It responds with time and date, 
+ * which is then parsed to variables in pointers.
+ *
  * @param day
  * @param month
  * @param year
@@ -29,13 +45,13 @@ int8_t esp8266_GetDate(uint8_t *day, uint8_t *month, uint16_t *year,
 
 /**
  * @param buf - buffer to which function will write IP and MAC.
- * @ret - 0 on success, negative value on fail.
+ * @retval 0 on success, negative value on fail.
  */
 int8_t esp8266_GetIp(char *buf);
 
 /**
  * @brief creates TCP/IP server from esp8266.
- * @ret - please look to source code.
+ * @retval please look to source code.
  */
 int8_t esp8266_MakeAsServer();
 
@@ -43,50 +59,62 @@ int8_t esp8266_MakeAsServer();
  * @brief HTTP requests check
  * @param file - buffer in which name of file to be send will be placed.
  * @param id - id which is linked with file to be send.
- * @ret - 0 if there is pending HTTP request, -EINVAL otherwise.
+ * @retval 0 if there is pending HTTP request, -EINVAL otherwise.
  */
 int8_t esp8266_ScanForFile(char *file, uint8_t *id);
 
 /**
  * @brief Reset condition check.
- * @ret true if esp8266 must be reset, false otherwise.
+ * @retval true if esp8266 must be reset, false otherwise.
  */ 
 int8_t esp8266_CheckResetFlag();
 
 /**
- * @brief AT+CIPSEND command write.
+ * @brief AT+CIPSEND command write for data transmit.
+ *
+ * Function firstly sends AT+CIPSEND command, waits for acknowledge, then it
+ * transmits data, and again waits for acknowledge from esp8266 chip.
+ *
  * @param data - payload of chunk to be written.
  * @data_size - data size
  * @id - channel to which data will be send.
- * @ret - -1 if channel is not in transmit state (serious error),
+ * @retval -1 if channel is not in transmit state (serious error),
  * -2 if send of command failed, -3 if wait for command result failed,
  *  -4 is send of data failed, 0 on success.
  */
 int8_t esp8266_WriteATCIPSEND(char *data, size_t data_size, uint8_t id);
 
 /**
- * @brief AT+CIPCLOSE command write. It closes channel.
+ * @brief AT+CIPCLOSE command write. 
+ *
+ * Used to close a channel.
+ * 
  * @param buf - temporary buffer, of size which equals to BUF_MEM_SIZE
  * @param id - id of channel to be closed.
- * @ret - -1 if send of AT+CIPCLOSE failed, -2 if waiting for command result 
+ * @retval -1 if send of AT+CIPCLOSE failed, -2 if waiting for command result 
  * failed, 0 on success.
  */
 int8_t esp8266_WriteATCIPCLOSE(char *buf, uint8_t id);
 
 /**
- * @brief Function in which is performed wait for acknowledge to ATCIPSEND
+ * @brief Function which waits for acknowledge to ATCIPSEND
  * or ATCIPCLOSE function.
+ *
  * @param command - command, that is waiting for.
  * @delay - delay in ms between searches of command in input buffer.
  * @multiplier - count of function repetition. First function searches
  * command, if there is no such command it waits for delay. Then multiplier
  * defines how many such a loops to make.
  *
- * @ret - 0 if command ended with OK, 1 if command ended with FAIL, 2
+ * @retval  0 if command ended with OK, 1 if command ended with FAIL, 2
  * if command ended wich ERROR, -EINVAL if there was no such command,
  * -EBUSY if there is i.e. half of command and nothing more.
  */
 int8_t esp8266_WaitForAck(const uint8_t id, const char *command, 
-			  unsigned int delay, uint8_t multiplier); //
-void esp8266_ClearResetFlag();//
+			  unsigned int delay, uint8_t multiplier); 
+
+/**
+ * @brief Function to clear reset flag after Wi-Fi reset.
+ */
+void esp8266_ClearResetFlag();
 #endif

@@ -8,7 +8,17 @@
 #include "xpt2046.h"
 
 /**
- * @brief timer for some time based events
+ * @addtogroup RFID_System libraries
+ * @{
+ */
+
+/**
+ * @defgroup TIM2
+ * @brief TIM2 library.
+ *
+ * Timer 2 is used for time measurement, and tasks execution after
+ * specific time interval. Functions of this modules are named easily,
+ * so there is no need to comment them.
  */
 
 void TIM2_Init();

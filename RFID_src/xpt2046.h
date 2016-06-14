@@ -9,6 +9,18 @@
 #include "tm_stm32f1_ili9341.h"
 #include "TIM2.h"
 
+/**
+ * @addtogroup RFID_System libraries
+ * @{
+ */
+
+/**
+ * @defgroup xpt2046
+ * @brief xpt2046 library.
+ * @{
+ */
+ 
+
 extern __IO uint8_t xpt2046_irq_flag;
 
 /**

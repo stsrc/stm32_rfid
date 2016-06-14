@@ -7,6 +7,22 @@
 
 #define BUF_MEM_SIZE 512
 #define TEMP_MEM_SIZE 32
+
+/**
+ * @addtogroup RFID_System libraries
+ * @{
+ */
+
+/**
+ * @defgroup simple_buffer
+ * @brief simple circural buffer library.
+ * 
+ * Used by UART2 and esp8266 libraries.
+ */
+
+
+
+
 /**
  * @brief - simple_buffer struct, represents buffer.
  * @param lock, temp - if there was byte insert in time of searching, data could
@@ -31,13 +47,13 @@ void buffer_init(struct simple_buffer *buf);
 
 /**
  * @brief get byte from buffer. Returns byte by pointer.
- * @ret - 0 on success. -ENOMEM if there is no bytes to read.
+ * @retval - 0 on success. -ENOMEM if there is no bytes to read.
  */
 int8_t buffer_get_byte(struct simple_buffer* buf, uint8_t *byte);
 
 /**
  * @brief set byte to buffer.
- * @ret - 0 on succes. -ENOMEM if there is no space.
+ * @retval - 0 on succes. -ENOMEM if there is no space.
  */
 int8_t buffer_set_byte(struct simple_buffer* buf, uint8_t byte);	
 
@@ -45,7 +61,7 @@ int8_t buffer_set_byte(struct simple_buffer* buf, uint8_t byte);
  * @brief set data to buffer.
  * @param text - data to set.
  * @param data_size - data_size.
- * @ret 0 if success, -ENOMEM if there is no space.
+ * @retval 0 if success, -ENOMEM if there is no space.
  */
 int8_t buffer_set_text(struct simple_buffer *buf, const char *text, 
 		       size_t data_size);
@@ -62,7 +78,7 @@ int8_t buffer_SearchGetLabel(struct simple_buffer *buf, const char *label,
 
 /**
  * @brief function checks wether buffer is full.
- * @ret 0 if it is not full, 1 otherwise.
+ * @retval 0 if it is not full, 1 otherwise.
  */
 int8_t buffer_IsFull(struct simple_buffer *buf);
 

@@ -9,6 +9,24 @@
 #include <stm32f1xx_hal_dma.h>
 #include <stm32f1xx_hal_cortex.h>
 
+/**
+ * @addtogroup RFID_System libraries
+ * @{
+ */
+
+/**
+ * @defgroup SPI
+ * @brief SPI library.
+ *
+ * SPI library, which is based on HAL SPI library. LCD, touchpanel and SD card reader uses
+ * SPI in this project.
+ */
+
+/**
+ * @brief Function presents that SPI result failed, by switching on LEDs.
+ * @{
+ * If error occures, execution of program is stoped.
+ */
 void SPI_show_error(HAL_StatusTypeDef rt);
 
 HAL_StatusTypeDef SPI_1_init();

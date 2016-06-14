@@ -7,4 +7,5 @@ libs/
 *.elf
 *.swp
 sd_data/favicon.ico
+documentation/
 4A*

@@ -27,19 +27,6 @@
  * THE SOFTWARE.
  */
 
-/*
- * RFID data format:
- *
- * 1st and 2nd byte - control bytes.
- * 
- * from 3rd to 13th byte - card ID number. Each byte contains ASCII sign, which 
- * may be a single digit or letter from A to F (each sign belongs to hexadecimal
- * system). Therefore those 10 bytes makes value written in hex.
- *
- * last 2 bytes - CRC bytes.
- *
- */
-
 #ifndef SeeedRFID_H
 #define SeeedRFID_H
 
@@ -50,6 +37,28 @@
 #include "UART.h"
 
 /**
+ * @addtogroup RFID_System libraries
+ * @{
+ */
+
+/**
+ * @defgroup rfid
+ * @brief RFID library.
+ * @{
+ *
+ * Library is based on seeed studio library. It was rewritten from C++.
+ * rfid data format:
+ *
+ * 1st and 2nd byte - control bytes.
+ * 
+ * from 3rd to 13th byte - card id number. each byte contains ascii sign, which 
+ * may be a single digit or letter from a to f (each sign belongs to hexadecimal
+ * system). therefore those 10 bytes makes value written in hex.
+ *
+ * last 2 bytes - crc bytes.
+ */
+
+/**
  * @brief RFID initalization. It turns on UART_1.
  */
 void RFID_Init();
@@ -57,7 +66,7 @@ void RFID_Init();
 /**
  * @brief function copies last sensed RFID tag to buf.
  * @param buf - output buffer. Minimal size of buffer is 11 bytes.
- * @ret - 0 if CRC is correct, 1 otherwise. 
+ * @retval 0 if CRC is correct, 1 otherwise. 
  */
 uint8_t RFID_CardNumber(char* const buf);
 
