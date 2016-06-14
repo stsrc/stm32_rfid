@@ -70,10 +70,9 @@ static uint8_t RFID_check_CRC() {
 	return CRC_from_data == CRC_from_chunk;
 }
 
-uint8_t RFID_Read()
+void RFID_Read()
 {
 	UART_1_read((uint8_t *)data, RFID_DATA_SIZE);
-	return 0;
 }
 
 uint8_t RFID_CardNumber(char* const buf)

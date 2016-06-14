@@ -195,7 +195,6 @@ HAL_StatusTypeDef SPI_1_read(uint8_t *data, uint16_t bytes)
 	return rt;
 }
 
-/* TODO: Unification */
 HAL_StatusTypeDef SPI_2_init(void)
 {
 	HAL_StatusTypeDef rt;

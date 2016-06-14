@@ -148,7 +148,7 @@ int8_t buffer_IsEmpty(struct simple_buffer *buf)
 		-EINVAL;
 }
 
-int8_t buffer_MoveTailToLabel(struct simple_buffer *buf, const char *label)
+static int8_t buffer_MoveTailToLabel(struct simple_buffer *buf, const char *label)
 {
 	uint8_t byte;
 	int8_t ret;
@@ -175,48 +175,7 @@ int8_t buffer_MoveTailToLabel(struct simple_buffer *buf, const char *label)
 	return -EINVAL;
 }
 
-int8_t buffer_SearchGetLabel(struct simple_buffer *buf, const char *label, 
-			     const char *limiter, char *output)
-{	
-	int8_t ret;
-	size_t tail_old;
-	if (buffer_IsLocked(buf))
-		return -EBUSY;
-	buffer_SetLock(buf);
-	tail_old = buf->tail;
-	ret = buffer_MoveTailToLabel(buf, label);
-	if (ret) {
-		buffer_ClearLock(buf);
-		return ret;
-	}
-	if (output)
-		ret = buffer_CopyToNearestWord(buf, output, limiter);
-	else
-		ret = buffer_MoveTailToLabel(buf, limiter);
-
-	if (ret)
-		buf->tail = tail_old;
-	buffer_ClearLock(buf);
-	return ret;
-}
-
-int8_t buffer_CopyToNearestSign(struct simple_buffer *buf, char* output, 
-				const char sign)
-{
-	uint8_t byte = 0;
-	size_t tail_old = buf->tail;
-	while(!buffer_get_byte(buf, &byte)) {
-		if (byte == sign) {
-			*output = '\0';
-			return 0;
-		}
-		*output++ = byte;
-	}
-	buf->tail = tail_old;
-	return -EINVAL;
-}
-
-int8_t buffer_CopyToNearestWord(struct simple_buffer *buf, char *output,
+static int8_t buffer_CopyToNearestWord(struct simple_buffer *buf, char *output,
 				const char *word)
 {
 	uint8_t byte = 0;
@@ -245,16 +204,35 @@ int8_t buffer_CopyToNearestWord(struct simple_buffer *buf, char *output,
 	return ret;
 }
 
+
+int8_t buffer_SearchGetLabel(struct simple_buffer *buf, const char *label, 
+			     const char *limiter, char *output)
+{	
+	int8_t ret;
+	size_t tail_old;
+	if (buffer_IsLocked(buf))
+		return -EBUSY;
+	buffer_SetLock(buf);
+	tail_old = buf->tail;
+	ret = buffer_MoveTailToLabel(buf, label);
+	if (ret) {
+		buffer_ClearLock(buf);
+		return ret;
+	}
+	if (output)
+		ret = buffer_CopyToNearestWord(buf, output, limiter);
+	else
+		ret = buffer_MoveTailToLabel(buf, limiter);
+
+	if (ret)
+		buf->tail = tail_old;
+	buffer_ClearLock(buf);
+	return ret;
+}
+
 void buffer_Reset(struct simple_buffer *buf) 
 {
 	memset(buf, 0, sizeof(struct simple_buffer));
-}
-
-void buffer_CopyTillHead(struct simple_buffer *buf, char *output) 
-{
-	uint8_t byte;
-	while(!buffer_get_byte(buf, &byte))
-		*output++ = byte;
 }
 
 inline void buffer_SetIgnore(struct simple_buffer *buf, size_t ignore)

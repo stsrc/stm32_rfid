@@ -49,8 +49,21 @@
 #include <stdint.h>
 #include "UART.h"
 
+/**
+ * @brief RFID initalization. It turns on UART_1.
+ */
 void RFID_Init();
+
+/**
+ * @brief function copies last sensed RFID tag to buf.
+ * @param buf - output buffer. Minimal size of buffer is 11 bytes.
+ * @ret - 0 if CRC is correct, 1 otherwise. 
+ */
 uint8_t RFID_CardNumber(char* const buf);
-uint8_t RFID_Read();
+
+/**
+ * @brief Function sets UART to wait for reading next 14 bytes.
+ */
+void RFID_Read();
 
 #endif //__SeeedRFID_H__

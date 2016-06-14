@@ -14,6 +14,9 @@
 #include "TIM2.h"
 #include <string.h>
 
+/**
+ * @brief function sets priorites for used interrupts handlers.
+ */
 void SetInterrupts()
 {
 	HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
@@ -25,6 +28,9 @@ void SetInterrupts()
 	HAL_NVIC_SetPriority(TIM2_IRQn, 13, 0);
 }
 
+/**
+ * @brief If 1 second elapsed, new date is printed on a screen.
+ */
 void PrintDate() 
 {
 	uint8_t month, day, hour, min, sec;
@@ -38,15 +44,25 @@ void PrintDate()
 }
 
 inline static void LcdWrite(char *buf, size_t x, size_t y) {
+	TM_ILI9341_DisplayOn();
+	TIM2_TurnOffLCDAfterTimeInterval(10);
 	TM_ILI9341_Puts(x, y, buf, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 }
 
+inline static void LcdClear() 
+{
+	TM_ILI9341_DrawFilledRectangle(0, 0, 319, 239, ILI9341_COLOR_BLACK);
+}
+
+/**
+ * @brief Functions stops execution of program if parameter ret is not 0.
+ * @param ret - test parameter
+ */
 void CheckError(char * message, int ret)
 {
 	if (ret) {
 		LcdWrite(message, 10, 10);
-		delay_ms(3000);
-		TM_ILI9341_DrawFilledRectangle(0, 0, 319, 239, ILI9341_COLOR_BLACK);
+		while(1);
 	}
 }
 
@@ -68,8 +84,9 @@ int8_t UpdateTime()
 /**
  * @brief Function gets IP from esp8266 and prints it on screen
  */
-void GetIp(char *buf)
+void PrintIp()
 {
+	char buf[BUF_MEM_SIZE];
 	int8_t ret;
 	memset(buf, 0, BUF_MEM_SIZE);
 	ret = esp8266_GetIp(buf);
@@ -89,25 +106,6 @@ int8_t FATFS_Init(FATFS *SDFatFs, char *path)
 	return ret;
 }
 
-int8_t WiFi_Init()
-{
-	int ret = 0;
-	const size_t max = 5;
-	for (size_t i = 0; i < max; i++) {
-		ret = esp8266_Init();
-		if (!ret) {
-			break;
-		} else if (i != max - 1) {
-			LcdWrite("Problems with esp8266 init.\n"
-				 "Retrying in 3 sec.", 0, 0);
-			delay_ms(3000);
-			TM_ILI9341_DrawFilledRectangle(0, 0, 239, 50, 
-				 ILI9341_COLOR_BLACK);	
-		}
-	}
-	return ret;
-}
-
 /**
  * @brief Function returns 0 if html file is requested,
  * or 1 if there is a request to change settings, or 2 if
@@ -119,13 +117,14 @@ int8_t WiFi_Init()
 int8_t CheckFormat(char *buf)
 {
 	char *ptr = strstr(buf, "z.html?");
-	if (ptr) {
+	if (ptr) 
 		return 1;
-	} 
+	
 	ptr = strstr(buf, "w.html");
-	if (ptr) {
+
+	if (ptr) 
 		return 2;
-	}
+		
 	return 0;
 }
 
@@ -189,8 +188,11 @@ static int8_t SendPage(char *buf, const uint8_t id)
 
 	ret = f_open(&html_file, buf, FA_OPEN_EXISTING | FA_READ);
 	if (ret) {
-		esp8266_WriteATCIPCLOSE(buf, id);
-		return -1;
+		ret = f_open(&html_file, "index.html", FA_OPEN_EXISTING | FA_READ);
+		if (ret) {
+			esp8266_WriteATCIPCLOSE(buf, id);
+			return -1;
+		}
 	}
 
 	file_size = f_size(&html_file);
@@ -296,17 +298,17 @@ static int8_t AddNewRFIDCard(char *buf)
 }
 
 /**
- * @brief function overlaps few another functions. It checks if there is pending
+ * @brief function uses few another functions. It checks if there is pending
  * HTTP request, if yes, function checks what kind of page is pending (is it
  * GET, or changing permission of a RFID card.
  *
  * @param buf - global buffer.
  */
-int8_t PageRequest(char *buf)
+int8_t PageRequest()
 {
 	uint8_t id;
 	int8_t ret;
-
+	char buf[BUF_MEM_SIZE];
 	ret = esp8266_ScanForFile(buf, &id);
 	if (ret)
 		return 0;
@@ -325,24 +327,64 @@ int8_t PageRequest(char *buf)
 	return SendPage(buf, id);
 }
 
+static int8_t WiFi_Init()
+{
+	int ret = 0;
+	const size_t max = 5;
+	for (size_t i = 0; i < max; i++) {
+		LcdWrite("esp8266 init...", 0, 0);
+		ret = esp8266_Init();
+		if (!ret) {
+			break;
+		} else if (i != max - 1) {
+			LcdWrite("Problems with esp8266 init.\n"
+				 "Retrying in 3 sec.", 0, 20);
+			delay_ms(3000);
+			LcdClear();
+		}
+	}
+	LcdClear();
+	CheckError("esp8266 init fail.", ret);
+	return ret;
+}
+
+static void Server_Init() 
+{
+	int cnt = 0;
+	int8_t ret;
+	do {
+		LcdWrite("Server initalization...", 0, 0);
+		ret = esp8266_MakeAsServer();
+		if (ret) {
+			LcdWrite("Server init failed! Retrying in 3 sec.\0", 0, 20);
+			delay_ms(3000);
+			LcdClear();
+		}
+		cnt++;
+	} while (ret && cnt < 3);
+	LcdClear();
+	CheckError("Server init failed!", ret);
+}
+
 /**
  * @brief function checks if esp8266 lost connections to Wi-Fi. If yes - reset of
  * this module is performed.
  */
 void CheckWiFi() 
 {
-	int ret;
 	if(esp8266_CheckResetFlag()) {
 		TM_ILI9341_DrawFilledRectangle(0, 0, 239, 319, ILI9341_COLOR_BLACK);
 		LcdWrite("esp8266 reset occured!", 0, 0);
 		LcdWrite("esp8266 reinit in 3 sec!", 0, 10);
 		delay_ms(3000);
 		TM_ILI9341_DrawFilledRectangle(0, 0, 239, 319, ILI9341_COLOR_BLACK);
-		ret = WiFi_Init();
-		CheckError("Can not reset WiFi!", ret);
-		ret = esp8266_MakeAsServer();
-		CheckError("esp8266_MakeAsServer failed!\0", ret);
+		
+		WiFi_Init();	
+		Server_Init();
+		PrintIp();
+		
 		esp8266_ClearResetFlag();
+		
 		if (buffer_IsFull(&UART2_receive_buffer)) {
 			buffer_Reset(&UART2_receive_buffer);
 		}
@@ -433,10 +475,11 @@ static int8_t PresentRFIDPermission(char *buf, const char *RFID_ID)
  * @brief Check if RFID reader sensed new card. If yes - do action (save to 
  * history, print message on a screen, etc.)
  */
-static int8_t CheckNewRFID(char *buf)
+static int8_t CheckNewRFID()
 {
 	int8_t ret = 0; 
 	char temp[50];
+	char buf[BUF_MEM_SIZE];
 
 	if (READ_BIT(UART_1_flag, error_bit)) {
 		CLEAR_BIT(UART_1_flag, error_bit);	
@@ -445,9 +488,14 @@ static int8_t CheckNewRFID(char *buf)
 		CLEAR_BIT(UART_1_flag, ready_bit);
 		memset(buf, 0, BUF_MEM_SIZE);
 		TM_ILI9341_DisplayOn();
-		RFID_CardNumber(temp);
-		ret = SaveRFIDToHistory(buf, temp, sizeof(temp));	
-		PresentRFIDPermission(buf, temp); 
+		ret = RFID_CardNumber(temp);
+		if (ret) {
+			TM_ILI9341_DrawFilledRectangle(0, 100, 239, 319, ILI9341_COLOR_RED);
+			LcdWrite("Nie mozna odczytac karty!", 0, 100);
+		} else {
+			SaveRFIDToHistory(buf, temp, sizeof(temp));	
+			PresentRFIDPermission(buf, temp); 
+		}
 		TIM2_TurnOnRFIDAfterTimeInterval(4);
 		TIM2_ClearLCDAfterTimeInterval(5);
 		TIM2_TurnOffLCDAfterTimeInterval(10);
@@ -458,47 +506,67 @@ static int8_t CheckNewRFID(char *buf)
 
 FATFS SDFatFs;
 
+static void SD_Init() 
+{
+	int cnt = 0;
+	char org[5];
+	int8_t ret;
+	do {
+		LcdWrite("FATFS init...\0", 0, 0); 
+		ret = FATFS_Init(&SDFatFs, org);
+		if(ret) {
+			LcdWrite("FATFS initalize failed! Retrying in 3 sec.\0", 0, 20);
+			delay_ms(3000);
+			LcdClear();
+		}
+		cnt++;
+	} while (ret && cnt < 3);
+	LcdClear();	
+	CheckError("FATFS initalization failed!", ret);
+}
+
+
+static void Clock_Init() 
+{
+	int cnt = 0;
+	int8_t ret;	
+	do {
+		LcdWrite("Downloading actual time...", 0, 0);
+		ret = UpdateTime();
+		if (ret) {
+			LcdWrite("Download failed! Retrying in 3 sec.\0", 0, 20);
+			delay_ms(3000);
+			LcdClear();
+		}
+		cnt++;
+	} while (ret && cnt < 3);
+	LcdClear();
+	CheckError("Time download failed!", ret);
+}
+
 int main(void)
 {
-	int ret;
-	char buf[BUF_MEM_SIZE];
-	char org[5];
 
-	memset(org, 0, 5);
 	SetInterrupts();
-	TM_ILI9341_Init();
-	delay_init();
-	xpt2046_init();
-	RFID_Init();
 	TIM2_Init();
-
+	TM_ILI9341_Init();
+	xpt2046_Init();
+	delay_init();
+	RFID_Init();
 	RTC_Init();
-	do { 
-		ret = FATFS_Init(&SDFatFs, org);
-		CheckError("FATFS initalization failed!\0", ret);
-	} while (ret);
 
-	do {
-	       	ret = WiFi_Init();
-		CheckError("Can not connect to WiFi!\0", ret);
-	} while (ret);
-	
-	ret = UpdateTime();
-	CheckError("Can not download time!\0", ret);
+	SD_Init();
+	WiFi_Init();
+	Clock_Init();	
 
-	PrintDate();
-	GetIp(buf);
-	
-	do {
-		ret = esp8266_MakeAsServer();
-		CheckError("esp8266_MakeAsServer failed!\0", ret);
-	} while (ret);
+	Server_Init();
+	PrintIp();
 
 	while(1) {
-		PageRequest(buf);
+		PageRequest();
 		PrintDate();
 		CheckWiFi();
-		CheckNewRFID(buf);	
+		CheckNewRFID();	
 	}
 	return 0;
 }

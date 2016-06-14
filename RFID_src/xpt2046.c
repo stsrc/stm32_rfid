@@ -87,7 +87,7 @@ static inline void xpt2046_transmit(uint8_t *cmd, uint8_t *rx, uint16_t bytes)
 	SPI_1_change_speed(NULL, old_speed);	
 }
 
-void xpt2046_init(void)
+void xpt2046_Init(void)
 {
 	struct cmd_input inp = {
 		.START = 1,

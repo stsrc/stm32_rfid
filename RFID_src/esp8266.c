@@ -63,6 +63,27 @@ int8_t esp8266_ScanForFile(char *file, uint8_t *id)
 	return -EINVAL;	
 }
 
+int8_t esp8266_GetReply(const char *command, const char *delimiter, 
+			char *output, unsigned int delay, uint8_t multiplier)
+{
+	int8_t ret, cnt = 0;
+	do {
+		ret = buffer_SearchGetLabel(&UART2_receive_buffer, command, 
+					    delimiter, output);
+		if (ret)
+			delay_ms(delay);
+	} while (((ret == -EBUSY) || (ret == -EINVAL)) && (++cnt < multiplier));
+	return ret;
+}
+
+int8_t esp8266_Send(const char *data, size_t data_size) 
+{
+	int8_t ret;
+	ret = buffer_set_text(&UART2_transmit_buffer, data, data_size);
+	if (!ret)
+		UART_2_transmit();
+	return ret;
+}
 
 static void SetChannelTransmit(char *buf, uint8_t id)
 {
@@ -71,7 +92,12 @@ static void SetChannelTransmit(char *buf, uint8_t id)
 	SetChannel(id, CHNL_STATE_TRANSMIT);
 }
 
-void esp8266_InitPins() 
+/**
+ * @brief Pins initalization. 
+ * 
+ * It sets pins, to which esp8266 is connected.
+ */
+static void esp8266_InitPins() 
 {
 	GPIO_InitTypeDef init;
 	init.Mode = GPIO_MODE_OUTPUT_PP;
@@ -84,7 +110,14 @@ void esp8266_InitPins()
 	HAL_GPIO_WritePin(ESP8266_RST_PORT, ESP8266_RST_PIN, GPIO_PIN_SET);
 }
 
-void esp8266_HardReset() 
+
+/**
+ * @brief hardware esp8266 reset.
+ * 
+ * It toggles esp8266 reset pin to logic 0, holds for 1.5s, toggles to 1,
+ * and holds for 1s.
+ */
+static void esp8266_HardReset() 
 {
 	HAL_GPIO_WritePin(ESP8266_RST_PORT, ESP8266_RST_PIN, GPIO_PIN_RESET);
 	delay_ms(1500);
@@ -178,11 +211,6 @@ int8_t esp8266_MakeAsServer()
 	return 0;
 }
 
-/**
- * @brief Initialization of esp8266
- *
- * Function changes speed of esp8266 and UART2, to achive higher transfer.
- */
 int8_t esp8266_Init(char *global_buf) 
 {
 	int8_t ret;
@@ -206,18 +234,6 @@ int8_t esp8266_Init(char *global_buf)
 	return 0;
 }
 
-/** @brief Function sets UART2_transmit_buffer with data of size data_size
- * @param data - buffer with data to send
- * @param data_size - size of data to send.
- */
-int8_t esp8266_Send(const char *data, size_t data_size) 
-{
-	int8_t ret;
-	ret = buffer_set_text(&UART2_transmit_buffer, data, data_size);
-	if (!ret)
-		UART_2_transmit();
-	return ret;
-}
 
 int8_t esp8266_SendGetReply(const char *command, const char *delimiter, 
 			    char *output, unsigned int delay,
@@ -229,19 +245,6 @@ int8_t esp8266_SendGetReply(const char *command, const char *delimiter,
 	buffer_Reset(&UART2_receive_buffer);		
 	esp8266_Send(command, strlen(command));
 	ret = esp8266_GetReply(command, delimiter, output, delay, multiplier);	
-	return ret;
-}
-
-int8_t esp8266_GetReply(const char *command, const char *delimiter, 
-			char *output, unsigned int delay, uint8_t multiplier)
-{
-	int8_t ret, cnt = 0;
-	do {
-		ret = buffer_SearchGetLabel(&UART2_receive_buffer, command, 
-					    delimiter, output);
-		if (ret)
-			delay_ms(delay);
-	} while (((ret == -EBUSY) || (ret == -EINVAL)) && (++cnt < multiplier));
 	return ret;
 }
 
@@ -367,7 +370,10 @@ int8_t esp8266_WriteATCIPCLOSE(char *buf, uint8_t id)
 	
 	ret = esp8266_WaitForAck(id, buf, 5, 200);
 	
-	return ret;
+	if (ret)
+		return -2;
+	
+	return 0;
 }
 
 inline int8_t esp8266_GetIp(char *buf)
@@ -467,10 +473,9 @@ static int8_t esp8266_state1(const uint8_t data, char *buf, const size_t buf_len
 	ret = sscanf(buf, "+IPD,%hu,%hu:GET /%s HTTP", &id, &len, file);
 
 	SetChannelTransmit(file, id);
+	
+	len -= strlen("+IPD,x,xxx: GET / HTTP") + strlen(file) + 20; 
 
-	//TODO len
-	if (len > 40)
-		len -= 40;
 	buffer_SetIgnore(&UART2_receive_buffer, len); 
 	memset(buf, 0, buf_len);
 	return 0;
@@ -532,7 +537,8 @@ void esp8266_CheckInput(uint8_t data)
 		return;
 
 	/*
-	 * Sometimes esp8266 resets itself due to I don't know.
+	 * Sometimes esp8266 resets itself without reason.
+	 * There is need to sense it and restart connection etc.
 	 * Reset of wifi etc. applied
 	 */
 	ret = esp8266_CheckReset(&state, buf, sizeof(buf));

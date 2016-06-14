@@ -3,6 +3,12 @@
 #include <stm32f1xx.h>
 #include <core_cm3.h>
 #include <stm32f1xx_hal.h>
+/**
+ * @brief delay initalization
+ */
 void delay_init();
+/**
+ * @brief function to wait specific time in ms
+ */
 void delay_ms(uint32_t delay_in_ms);
 #endif

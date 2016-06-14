@@ -15,6 +15,11 @@ HAL_StatusTypeDef SPI_1_init();
 HAL_StatusTypeDef SPI_1_send(uint8_t *data);
 HAL_StatusTypeDef SPI_1_read(uint8_t *data, uint16_t bytes);
 HAL_StatusTypeDef SPI_1_DMA_send(uint8_t *data, uint16_t bytes);
+/** @brief function changes speed of SPI_1.
+ * @param old - pointer to variable in which old speed whill be stored. 
+ * May be NULL.
+ * @param new - new speed.
+ */
 HAL_StatusTypeDef SPI_1_change_speed(uint32_t *old, uint32_t new);
 
 HAL_StatusTypeDef SPI_2_init();

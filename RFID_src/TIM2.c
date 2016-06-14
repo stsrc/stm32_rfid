@@ -19,10 +19,11 @@ void TIM2_IRQHandler(void)
 	
 		if (turn_off_lcd) {
 			turn_off_lcd--;
-			if (!turn_off_lcd)
+			if (!turn_off_lcd) {
 				TM_ILI9341_DisplayOff();
-			else if (turn_off_lcd == 1)
+			} else if (turn_off_lcd == 1) {
 				xpt2046_InterruptOn();
+			}
 		}
 
 		if (turn_on_RFID) {
@@ -64,6 +65,5 @@ void TIM2_TurnOffLCDAfterTimeInterval(uint8_t sec)
 void TIM2_TurnOnRFIDAfterTimeInterval(uint8_t sec)
 {
 	turn_on_RFID = sec;
-//	UART_1_set_irq(0);
 	CLEAR_BIT(UART_1_flag, error_bit);
 }

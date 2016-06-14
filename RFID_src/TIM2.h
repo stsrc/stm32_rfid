@@ -8,7 +8,7 @@
 #include "xpt2046.h"
 
 /**
- * @brief help timer for some time based events
+ * @brief timer for some time based events
  */
 
 void TIM2_Init();
