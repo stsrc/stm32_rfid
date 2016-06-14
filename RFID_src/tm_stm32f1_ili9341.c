@@ -192,8 +192,8 @@ void TM_ILI9341_InitLCD(void) {
 	TM_ILI9341_SendData(0x08);
 	TM_ILI9341_SendData(0x82);
 	TM_ILI9341_SendData(0x27);
-	TM_ILI9341_SendCommand(ILI9341_3GAMMA_EN);
-	TM_ILI9341_SendData(0x00);
+//	TM_ILI9341_SendCommand(ILI9341_3GAMMA_EN);
+//	TM_ILI9341_SendData(0x00);
 	TM_ILI9341_SendCommand(ILI9341_COLUMN_ADDR);
 	TM_ILI9341_SendData(0x00);
 	TM_ILI9341_SendData(0x00);
@@ -204,7 +204,7 @@ void TM_ILI9341_InitLCD(void) {
 	TM_ILI9341_SendData(0x00);
 	TM_ILI9341_SendData(0x01);
 	TM_ILI9341_SendData(0x3F);
-	TM_ILI9341_SendCommand(ILI9341_GAMMA);
+/*	TM_ILI9341_SendCommand(ILI9341_GAMMA);
 	TM_ILI9341_SendData(0x01);
 	TM_ILI9341_SendCommand(ILI9341_PGAMMA);
 	TM_ILI9341_SendData(0x0F);
@@ -237,7 +237,7 @@ void TM_ILI9341_InitLCD(void) {
 	TM_ILI9341_SendData(0x0C);
 	TM_ILI9341_SendData(0x31);
 	TM_ILI9341_SendData(0x36);
-	TM_ILI9341_SendData(0x0F);
+	TM_ILI9341_SendData(0x0F);*/
 	TM_ILI9341_SendCommand(ILI9341_SLEEP_OUT);
 
 	TM_ILI9341_Delay(1000000);
