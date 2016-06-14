@@ -25,16 +25,6 @@ void SetInterrupts()
 	HAL_NVIC_SetPriority(TIM2_IRQn, 13, 0);
 }
 
-void PrintTime() 
-{
-	uint8_t hour, min, sec;
-	char buf[10];
-	if(RTC_GetTime(&hour, &min, &sec)) {
-		sprintf(buf, "%02u:%02u:%02u", hour, min, sec);
-		TM_ILI9341_Puts(10, 20, buf, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
-	}
-}
-
 void PrintDate() 
 {
 	uint8_t month, day, hour, min, sec;
@@ -55,21 +45,29 @@ void CheckError(char * message, int ret)
 {
 	if (ret) {
 		LcdWrite(message, 10, 10);
-		while(1);
+		delay_ms(3000);
+		TM_ILI9341_DrawFilledRectangle(0, 0, 319, 239, ILI9341_COLOR_BLACK);
 	}
 }
 
+/**
+ * @brief function downloads time and sets RTC. Function just links another functions
+ */
 int8_t UpdateTime() 
 {
 	int ret;
 	uint8_t hour, minute, second, day, month;
 	uint16_t year;
 	ret = esp8266_GetDate(&day, &month, &year, &hour, &minute, &second);
-	CheckError("GetTime failed!\0", ret);
+	if (ret)
+		return ret;
 	RTC_SetDate(year, month, day, hour + 2, minute, second);	
-	return ret;
+	return 0;
 }
 
+/**
+ * @brief Function gets IP from esp8266 and prints it on screen
+ */
 void GetIp(char *buf)
 {
 	int8_t ret;
@@ -112,7 +110,8 @@ int8_t WiFi_Init()
 
 /**
  * @brief Function returns 0 if html file is requested,
- * or 1 if php is called.
+ * or 1 if there is a request to change settings, or 2 if
+ * new card will be added to system.
  *
  * @param buf - pointer to buffer which contains file name (with possible 
  * parameters if it is php call).
@@ -177,7 +176,6 @@ int8_t ChangeRFIDSettings(char *buf)
 	}
 
 	f_close(&file);	
-	strcpy(buf, "zarzadzaj.html");
 	return 0;
 }
 
@@ -226,7 +224,7 @@ static int8_t SendPage(char *buf, const uint8_t id)
 		ret = esp8266_WriteATCIPSEND(buf, bytes_read, id);
 		if (ret) {
 			f_close(&html_file);
-			return -8;
+			return -4;
 		}
 	}
 	
@@ -240,7 +238,7 @@ static int8_t SendPage(char *buf, const uint8_t id)
 
 	ret = f_close(&html_file);
 	if (ret)
-		return -7;
+		return -6;
 
 	return 0;
 }
@@ -278,7 +276,6 @@ static int8_t AddNewRFIDCard(char *buf)
 	ptr = strstr(buf, temp);
 	if (ptr) {
 		f_close(&file);
-		strcpy(buf, "zarzadzaj.html");
 		return 0;
 	}
 	
@@ -294,12 +291,17 @@ static int8_t AddNewRFIDCard(char *buf)
 		return -1;	
 	}
 	
-	strcpy(buf, "zarzadzaj.html");
-
 	TIM2_TurnOnRFIDAfterTimeInterval(1);
 	return 0;
 }
 
+/**
+ * @brief function overlaps few another functions. It checks if there is pending
+ * HTTP request, if yes, function checks what kind of page is pending (is it
+ * GET, or changing permission of a RFID card.
+ *
+ * @param buf - global buffer.
+ */
 int8_t PageRequest(char *buf)
 {
 	uint8_t id;
@@ -311,19 +313,22 @@ int8_t PageRequest(char *buf)
 
 	ret = CheckFormat(buf);
 	if (ret) {
-		if (ret == 1) 
+		if (ret == 1) {
 			ChangeRFIDSettings(buf);
-		
-		else if (ret == 2)
+			strcpy(buf, "zarzadzaj.html");
+		} else if (ret == 2) {
 			AddNewRFIDCard(buf);
-		
-		else 
+			strcpy(buf, "zarzadzaj.html");
+		} else 
 			strcpy(buf, "index.html");
 	}
 	return SendPage(buf, id);
 }
 
-
+/**
+ * @brief function checks if esp8266 lost connections to Wi-Fi. If yes - reset of
+ * this module is performed.
+ */
 void CheckWiFi() 
 {
 	int ret;
@@ -344,6 +349,13 @@ void CheckWiFi()
 	}
 }
 
+/**
+ * @brief Function saves sensed ID to SD card. It writes data when it occured.
+ *
+ * @param buf - global buffer.
+ * @param temp - buffer with ID written in ASCII.
+ * @param temp_len - size of temp buffer. 
+ */
 static int8_t SaveRFIDToHistory(char *buf, const char *temp, size_t temp_len)
 {
 	FIL file;
@@ -372,6 +384,11 @@ static int8_t SaveRFIDToHistory(char *buf, const char *temp, size_t temp_len)
 	return 0;
 }
 
+/**
+ * @brief Open file with permissions, print message on a screen.
+ * @param buf - pointer to global buffer.
+ * @param RFID_ID - buffer with last sensed ID.
+ */
 static int8_t PresentRFIDPermission(char *buf, const char *RFID_ID)
 {
 	FIL file;
@@ -412,12 +429,19 @@ static int8_t PresentRFIDPermission(char *buf, const char *RFID_ID)
 	return 0;
 }
 
+/**
+ * @brief Check if RFID reader sensed new card. If yes - do action (save to 
+ * history, print message on a screen, etc.)
+ */
 static int8_t CheckNewRFID(char *buf)
 {
 	int8_t ret = 0; 
 	char temp[50];
 
-	if (READ_BIT(UART_1_flag, ready_bit)) {
+	if (READ_BIT(UART_1_flag, error_bit)) {
+		CLEAR_BIT(UART_1_flag, error_bit);	
+		TIM2_TurnOnRFIDAfterTimeInterval(1);
+	} else if (READ_BIT(UART_1_flag, ready_bit)) {
 		CLEAR_BIT(UART_1_flag, ready_bit);
 		memset(buf, 0, BUF_MEM_SIZE);
 		TM_ILI9341_DisplayOn();
@@ -428,15 +452,12 @@ static int8_t CheckNewRFID(char *buf)
 		TIM2_ClearLCDAfterTimeInterval(5);
 		TIM2_TurnOffLCDAfterTimeInterval(10);
 		TM_ILI9341_DisplayOn();
-	} else if (READ_BIT(UART_1_flag, error_bit)) {
-		CLEAR_BIT(UART_1_flag, error_bit);	
-		TIM2_TurnOnRFIDAfterTimeInterval(1);
-	} 
-
+	}  
 	return ret;	
 }
 
 FATFS SDFatFs;
+
 int main(void)
 {
 	int ret;
@@ -449,17 +470,30 @@ int main(void)
 	delay_init();
 	xpt2046_init();
 	RFID_Init();
+	TIM2_Init();
+
 	RTC_Init();
-	ret = FATFS_Init(&SDFatFs, org);
-	CheckError("FATFS initalization failed!\0", ret);
-	ret = WiFi_Init();
-	CheckError("Can not connect to WiFi!\0", ret);
-	UpdateTime();
+	do { 
+		ret = FATFS_Init(&SDFatFs, org);
+		CheckError("FATFS initalization failed!\0", ret);
+	} while (ret);
+
+	do {
+	       	ret = WiFi_Init();
+		CheckError("Can not connect to WiFi!\0", ret);
+	} while (ret);
+	
+	ret = UpdateTime();
+	CheckError("Can not download time!\0", ret);
+
 	PrintDate();
 	GetIp(buf);
-	ret = esp8266_MakeAsServer();
-	CheckError("esp8266_MakeAsServer failed!\0", ret);
-	TIM2_Init();
+	
+	do {
+		ret = esp8266_MakeAsServer();
+		CheckError("esp8266_MakeAsServer failed!\0", ret);
+	} while (ret);
+
 	while(1) {
 		PageRequest(buf);
 		PrintDate();

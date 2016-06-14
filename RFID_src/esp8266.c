@@ -113,13 +113,13 @@ int8_t esp8266_WaitForAck(const uint8_t id, const char *command,
 		
 		if (ret) {
 			ret = esp8266_GetReply(command, "FAIL\0", NULL, 10, 0);
-			if (!ret)
+			if (!ret) 
 				return 1;
 		}
 
 		if (ret) {
 			ret = esp8266_GetReply(command, "ERROR\0", NULL, 10, 0);
-			if (!ret)
+			if (!ret) 
 				return 2;	
 		}
 		
@@ -178,6 +178,11 @@ int8_t esp8266_MakeAsServer()
 	return 0;
 }
 
+/**
+ * @brief Initialization of esp8266
+ *
+ * Function changes speed of esp8266 and UART2, to achive higher transfer.
+ */
 int8_t esp8266_Init(char *global_buf) 
 {
 	int8_t ret;
@@ -201,6 +206,10 @@ int8_t esp8266_Init(char *global_buf)
 	return 0;
 }
 
+/** @brief Function sets UART2_transmit_buffer with data of size data_size
+ * @param data - buffer with data to send
+ * @param data_size - size of data to send.
+ */
 int8_t esp8266_Send(const char *data, size_t data_size) 
 {
 	int8_t ret;
@@ -452,22 +461,17 @@ static int8_t esp8266_state1(const uint8_t data, char *buf, const size_t buf_len
 
 	*state = 0;
 	MoveToSign(buf, buf_len, '+');
-	buf += strlen("+IPD,");
-	if (*buf == ',')
-		buf++;
-	sscanf(buf, "%hu", &id);
-	buf += 2;
-	sscanf(buf, "%hu", &len);
-	buf = strstr(buf, "/");
-	buf++;
+
 	memset(file, 0, sizeof(file));
-	sscanf(buf, "%s", file);
+
+	ret = sscanf(buf, "+IPD,%hu,%hu:GET /%s HTTP", &id, &len, file);
 
 	SetChannelTransmit(file, id);
 
 	//TODO len
-	len -= 40;
-//	buffer_SetIgnore(&UART2_receive_buffer, len); 
+	if (len > 40)
+		len -= 40;
+	buffer_SetIgnore(&UART2_receive_buffer, len); 
 	memset(buf, 0, buf_len);
 	return 0;
 }
