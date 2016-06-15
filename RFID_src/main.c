@@ -296,7 +296,7 @@ int8_t SendPage(char *buf, const uint8_t id)
  * @param buf ID of new card.
  * @retval int8_t 0 on success, negative value on error.
  */
-static int8_t AddNewRFIDCard(char *buf) 
+int8_t AddNewRFIDCard(char *buf) 
 {
 	char temp[11];
 	FIL file;
@@ -381,6 +381,11 @@ int8_t PageRequest()
 	return SendPage(buf, id);
 }
 
+/**
+ * @brief Function initalizes WiFi. 
+ *
+ * If it fail, it hangs program.
+ */
 static int8_t WiFi_Init()
 {
 	int ret = 0;
@@ -402,7 +407,12 @@ static int8_t WiFi_Init()
 	return ret;
 }
 
-static void Server_Init() 
+/**
+ * @brief Function initalizes Server. 
+ *
+ * If it fail, it hangs program.
+ */
+void Server_Init() 
 {
 	int cnt = 0;
 	int8_t ret;
@@ -457,7 +467,7 @@ void CheckWiFi()
  * @param temp buffer with ID written in ASCII.
  * @param temp_len size of temp buffer. 
  */
-static int8_t SaveRFIDToHistory(char *buf, const char *temp, size_t temp_len)
+int8_t SaveRFIDToHistory(char *buf, const char *temp, size_t temp_len)
 {
 	FIL file;
 	int8_t ret = 0;
@@ -496,7 +506,7 @@ static int8_t SaveRFIDToHistory(char *buf, const char *temp, size_t temp_len)
  * @param RFID_ID buffer with last sensed ID.
  * @retval int8_t 0 on success, negative value on error.
  */
-static int8_t PresentRFIDPermission(char *buf, const char *RFID_ID)
+int8_t PresentRFIDPermission(char *buf, const char *RFID_ID)
 {
 	FIL file;
 	int8_t ret; 
@@ -546,7 +556,7 @@ static int8_t PresentRFIDPermission(char *buf, const char *RFID_ID)
  *
  * @retval int8_t 0 on success, 1 in there was failure with CRC.
  */
-static int8_t CheckNewRFID()
+int8_t CheckNewRFID()
 {
 	int8_t ret = 0; 
 	char temp[50];
@@ -580,7 +590,7 @@ static int8_t CheckNewRFID()
  *
  * If it fail, it hangs program.
  */
-static void SD_Init() 
+void SD_Init() 
 {
 	FATFS SDFatFs;
 	int cnt = 0;
@@ -605,7 +615,7 @@ static void SD_Init()
  *
  * If it fails, it hangs program.
  */
-static void Clock_Init() 
+void Clock_Init() 
 {
 	int cnt = 0;
 	int8_t ret;	
