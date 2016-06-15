@@ -21,9 +21,24 @@
  * so there is no need to comment them.
  */
 
+/**
+ * @brief Initalization function
+ */
 void TIM2_Init();
+
+/**
+ * @brief Clear LCD after time interval event set
+ */
 void TIM2_ClearLCDAfterTimeInterval(uint8_t sec);
+
+/**
+ * @brief Turn off LCD after time interval event set
+ */
 void TIM2_TurnOffLCDAfterTimeInterval(uint8_t sec);
+
+/**
+ * @brief Tun on RFID after time interval event set
+ */
 void TIM2_TurnOnRFIDAfterTimeInterval(uint8_t sec);
 
 #endif

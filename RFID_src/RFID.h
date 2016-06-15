@@ -47,6 +47,7 @@
  * @{
  *
  * Library is based on seeed studio library. It was rewritten from C++.
+ * 
  * rfid data format:
  *
  * 1st and 2nd byte - control bytes.
@@ -59,14 +60,16 @@
  */
 
 /**
- * @brief RFID initalization. It turns on UART_1.
+ * @brief RFID initalization.
+ *
+ * Function turns on UART1.
  */
 void RFID_Init();
 
 /**
  * @brief function copies last sensed RFID tag to buf.
- * @param buf - output buffer. Minimal size of buffer is 11 bytes.
- * @retval 0 if CRC is correct, 1 otherwise. 
+ * @param buf output buffer. Minimal size of buffer is 11 bytes.
+ * @retval uint8_t 0 if CRC is correct, 1 otherwise. 
  */
 uint8_t RFID_CardNumber(char* const buf);
 

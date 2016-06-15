@@ -17,6 +17,7 @@
 /**
  * @defgroup SPI
  * @brief SPI library.
+ * @{
  *
  * SPI library, which is based on HAL SPI library. LCD, touchpanel and SD card reader uses
  * SPI in this project.

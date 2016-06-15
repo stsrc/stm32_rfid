@@ -13,14 +13,16 @@
  * @defgroup Delay
  * @brief Delay library
  * @{
+ *
+ * Basic delay API.
  */
 
 /**
- * @brief delay initalization
+ * @brief Initalization function
  */
 void delay_init();
 /**
- * @brief function to wait specific time in ms
+ * @brief ms delay function.
  */
 void delay_ms(uint32_t delay_in_ms);
 #endif

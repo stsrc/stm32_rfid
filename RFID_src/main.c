@@ -22,6 +22,7 @@
 /**
  * @defgroup main
  * @brief main functions
+ * @{
  */
 
 /**
@@ -39,7 +40,7 @@ void SetInterrupts()
 }
 
 /**
- * @brief Function prints date.
+ * @brief Date printing function.
  *
  * If 1 second has elapsed, new data is printed on to the screen. If not - function returns.
  */
@@ -68,7 +69,7 @@ inline static void LcdClear()
 
 /**
  * @brief Functions stops execution of program if parameter ret is not 0.
- * @param ret - test parameter
+ * @param ret test parameter
  */
 void CheckError(char * message, int ret)
 {
@@ -107,10 +108,10 @@ void PrintIp()
 }
 
 /**
- * @brief Function initalizes FATFS library, to used it with SD reader.
+ * @brief FATFS library initalization function.
  *
- * @param SDFatFs - pointer to FATFS structure
- * @param path - root path of SD card.
+ * @param SDFatFs pointer to FATFS structure
+ * @param path root path of SD card.
  */
 int8_t FATFS_Init(FATFS *SDFatFs, char *path)
 {
@@ -125,15 +126,15 @@ int8_t FATFS_Init(FATFS *SDFatFs, char *path)
 }
 
 /**
- * @brief Function checks format of requested file. 
+ * @brief Files format check function. 
  *
- * Decision of action, which server will take (change RFID permission, add new card, etc.)
- * is based on return value of this function. It uses name of file, which was requested by
- * client. Then it returns specific value.
+ * Action, which will server take (change RFID permission, add new card, etc.), is based on 
+ * type and name of requested file. This function returns specific value, which fits to only
+ * specific type of action.
  *
- * @param buf - pointer to buffer which contains file name (with possible 
+ * @param buf pointer to buffer which contains file name (with possible 
  * parameters if it is php call).
- * @retval 0 if html file is requested, 1 if there is a request to change settings, 
+ * @retval int8_t 0 if html file is requested, 1 if there is a request to change settings, 
  * or 2 if new card will be added to system.
  */
 int8_t CheckFormat(char *buf)
@@ -156,8 +157,8 @@ int8_t CheckFormat(char *buf)
  * Functions opens a text file with list of RFID, than changes permission of a card, and
  * saves result to SD card.
  *
- * @param buf - buffer with ID and new permission.
- * @retval 0 on success, anything else on failure.
+ * @param buf buffer with ID and new permission.
+ * @retval int8_t 0 on success, anything else on failure.
  */
 int8_t ChangeRFIDSettings(char *buf)
 {
@@ -210,11 +211,13 @@ int8_t ChangeRFIDSettings(char *buf)
 }
 
 /**
- * @brief Sending page function.
+ * @brief Function transmits page to esp8266.
  *
  * It is the main point of sending answer to the client. It opens a file 
  * with a specific webpage, reads it, and sends to client.
- * @retval - 0 on success, negative value on fail.
+ * @param buf buffer which will be used (with size which equals to BUF_MEM_SIZE)
+ * @param id ID of channel to which page is transmitted.
+ * @retval int8_t 0 on success, negative value on fail.
  */
 int8_t SendPage(char *buf, const uint8_t id) 
 {
@@ -290,8 +293,8 @@ int8_t SendPage(char *buf, const uint8_t id)
  * Function used when new card is entered to the system. It opens list of cards in system,
  * checks if there already exists specific card. If not, it enters new card and sets permision
  * of card to unknown.
- * @param buf - ID of new card.
- * @retval 0 on success, negative value on error.
+ * @param buf ID of new card.
+ * @retval int8_t 0 on success, negative value on error.
  */
 static int8_t AddNewRFIDCard(char *buf) 
 {
@@ -352,8 +355,8 @@ static int8_t AddNewRFIDCard(char *buf)
  * It checks if there is pending HTTP request, if yes, function checks what 
  * kind of page is pending (is it GET, or changing permission of a RFID card).
  * Then it takes action specific to the type of request.
- * @param buf - global buffer.
- * @retval 0 on success, negative value on error.
+ * @param buf global buffer.
+ * @retval int8_t 0 on success, negative value on error.
  */
 int8_t PageRequest()
 {
@@ -418,9 +421,11 @@ static void Server_Init()
 }
 
 /**
- * @brief Function checks if esp8266 lost connection to Wi-Fi. 
+ * @brief Function checks if esp8266 has lost connection to Wi-Fi. 
  *
- * If esp8266 have lost connection, reset of esp8266 module is performed.
+ * If esp8266 has lost connection, hardware and software reset is performed,
+ * connection to WiFi is established again, and esp8266 again becomes server,
+ * IP is printed and reset flag is cleared.
  */
 void CheckWiFi() 
 {
@@ -448,9 +453,9 @@ void CheckWiFi()
  *
  * Function saves ID and date, when it happend.
  *
- * @param buf - global buffer.
- * @param temp - buffer with ID written in ASCII.
- * @param temp_len - size of temp buffer. 
+ * @param buf global buffer.
+ * @param temp buffer with ID written in ASCII.
+ * @param temp_len size of temp buffer. 
  */
 static int8_t SaveRFIDToHistory(char *buf, const char *temp, size_t temp_len)
 {
@@ -487,8 +492,9 @@ static int8_t SaveRFIDToHistory(char *buf, const char *temp, size_t temp_len)
  * prints specific comment and puts color which is suitable for permission
  * (green - allowed, red - disallowed, red - unknown state).
  *
- * @param buf - pointer to global buffer.
- * @param RFID_ID - buffer with last sensed ID.
+ * @param buf pointer to global buffer.
+ * @param RFID_ID buffer with last sensed ID.
+ * @retval int8_t 0 on success, negative value on error.
  */
 static int8_t PresentRFIDPermission(char *buf, const char *RFID_ID)
 {
@@ -538,7 +544,7 @@ static int8_t PresentRFIDPermission(char *buf, const char *RFID_ID)
  * it gives information on a screen. If it is good, function display
  * information about card (if it is allowed).
  *
- * @retval 0 on success, 1 in there was failure with CRC.
+ * @retval int8_t 0 on success, 1 in there was failure with CRC.
  */
 static int8_t CheckNewRFID()
 {
@@ -569,8 +575,6 @@ static int8_t CheckNewRFID()
 	return ret;	
 }
 
-FATFS SDFatFs;
-
 /**
  * @brief Function initalizes SD card and FatFS. 
  *
@@ -578,6 +582,7 @@ FATFS SDFatFs;
  */
 static void SD_Init() 
 {
+	FATFS SDFatFs;
 	int cnt = 0;
 	char org[5];
 	int8_t ret;
@@ -596,9 +601,9 @@ static void SD_Init()
 }
 
 /**
- * @brief Function downloads actual time from internet. 
+ * @brief Function downloads actual time from the Internet. 
  *
- * If it fail, it hangs program.
+ * If it fails, it hangs program.
  */
 static void Clock_Init() 
 {

@@ -21,6 +21,9 @@
  * @defgroup RTC
  * @brief RTC library.
  * @{
+ *
+ * This library allows to calculate date and time from 00:00:00 01.01.2016.
+ * It also supports leap year.
  */
 
 
