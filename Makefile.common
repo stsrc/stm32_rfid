@@ -34,9 +34,9 @@ MTYPE=ARM_MATH_CM3
 # Compilation Flags
 LDFLAGS+= -T$(LDSCRIPT) -mcpu=cortex-m3 -mthumb -mfloat-abi=soft
 LDFLAGS+= -D$(MTYPE) -specs=nosys.specs
-LDFLAGS+= -Wall -Wl,-gc-sections,-u,main
+LDFLAGS+= -Wall -Wextra -Wl,-gc-sections,-u,main
 CFLAGS+= -mcpu=cortex-m3 -mthumb -mfloat-abi=soft
-CFLAGS+= -Wall
+CFLAGS+= -Wall -Wextra
 CFLAGS+= -fdata-sections
 CFLAGS+= -I$(CORE)/inc -I$(STDPERIPH)/inc -I$(HAL)/Inc -I.
 CFLAGS+= -D$(PTYPE) -D$(MTYPE)

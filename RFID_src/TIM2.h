@@ -16,9 +16,10 @@
  * @defgroup TIM2
  * @brief TIM2 library.
  *
+ * @{
+ *
  * Timer 2 is used for time measurement, and tasks execution after
- * specific time interval. Functions of this modules are named easily,
- * so there is no need to comment them.
+ * specific time interval. 
  */
 
 /**

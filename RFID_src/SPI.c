@@ -52,6 +52,7 @@ static HAL_StatusTypeDef SPI_1_DMA_init(void)
 
 void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi)
 {
+	(void)hspi;
 	/* Enabling SP1*/
 	GPIO_InitTypeDef gpio_sck_mosi =
 	{
@@ -217,9 +218,9 @@ HAL_StatusTypeDef SPI_2_write(uint8_t *data)
 
 HAL_StatusTypeDef SPI_2_read(uint8_t *data, uint16_t bytes)
 {
+	(void)bytes;
 	HAL_StatusTypeDef rt;
 	SPI_wait_for_EOT(&spi_2_handler);
-	//rt = HAL_SPI_Receive(&spi_2_handler, data, bytes, 0xFFFF);
 	SPI2->DR = 0xff;
 	SPI_wait_for_EOT(&spi_2_handler);
 	while(!(SPI2->SR & SPI_SR_RXNE));

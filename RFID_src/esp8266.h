@@ -28,6 +28,7 @@
  * Function sets esp8266 pins, turns on UART2, 
  * changes speed of esp8266 and UART2, to achive higher transfer,
  * and connects to Wi-Fi. Password to Wi-Fi is in secret_password.h file.
+ * @retval int8_t 0 on success, negative value on failure.
  */
 int8_t esp8266_Init(); 
 
@@ -42,6 +43,7 @@ int8_t esp8266_Init();
  * @param year pointer to year variable
  * @param ...  pointers to variable which function will update with actual 
  *		values
+ * @retval int8_t 0 on success, negative value on failure.
  */
 int8_t esp8266_GetDate(uint8_t *day, uint8_t *month, uint16_t *year, 
 		       uint8_t *hour, uint8_t *minute, uint8_t *second);
@@ -127,4 +129,8 @@ int8_t esp8266_WaitForAck(const uint8_t id, const char *command,
  * @brief Function to clear reset flag after Wi-Fi reset.
  */
 void esp8266_ClearResetFlag();
+
+void esp8266_Update();
+
+void esp8266_CheckInput(uint8_t data);
 #endif

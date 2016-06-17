@@ -62,7 +62,7 @@
 /**
  * @brief RFID initalization.
  *
- * Function turns on UART1.
+ * Function turns on UART1, and zeroes internal data structure.
  */
 void RFID_Init();
 

@@ -64,9 +64,10 @@ int8_t esp8266_ScanForFile(char *file, uint8_t *id)
 }
 
 int8_t esp8266_GetReply(const char *command, const char *delimiter, 
-			char *output, unsigned int delay, uint8_t multiplier)
+			char *output, unsigned int delay, uint16_t multiplier)
 {
-	int8_t ret, cnt = 0;
+	int8_t ret;
+	uint16_t cnt = 0;
 	do {
 		ret = buffer_SearchGetLabel(&UART2_receive_buffer, command, 
 					    delimiter, output);
@@ -137,6 +138,7 @@ int8_t esp8266_WaitForOk(const char *command, unsigned int delay, uint8_t
 int8_t esp8266_WaitForAck(const uint8_t id, const char *command, 
 			  unsigned int delay, uint8_t multiplier) 
 {
+	(void)id;
 	int8_t ret;
 	uint8_t cnt = 0;
 	do {
@@ -211,7 +213,7 @@ int8_t esp8266_MakeAsServer()
 	return 0;
 }
 
-int8_t esp8266_Init(char *global_buf) 
+int8_t esp8266_Init() 
 {
 	int8_t ret;
 	const char * const RST_CMD = AT_RESET_CMD;
@@ -223,11 +225,6 @@ int8_t esp8266_Init(char *global_buf)
 	esp8266_Send(RST_CMD, strlen(RST_CMD));
 	delay_ms(5000);
 	buffer_Reset(&UART2_receive_buffer);
-	ret = esp8266_Send(AT_UART_CUR, strlen(AT_UART_CUR));
-	if (ret)
-		return -1;
-	ret = esp8266_WaitForOk(AT_UART_CUR, 100, 100);
-	UART_2_ChangeSpeed(230400);
 	ret = esp8266_ConnectToWiFi();
 	if (ret)
 		return -2;
@@ -237,7 +234,7 @@ int8_t esp8266_Init(char *global_buf)
 
 int8_t esp8266_SendGetReply(const char *command, const char *delimiter, 
 			    char *output, unsigned int delay,
-			    uint8_t multiplier)
+			    uint16_t multiplier)
 {
 	int8_t ret;
 	if (buffer_IsFull(&UART2_transmit_buffer))
@@ -325,7 +322,7 @@ int8_t esp8266_GetDate(uint8_t *day, uint8_t *month, uint16_t *year,
 	return 0;
 }
 
-inline int8_t esp8266_WriteATCIPSEND(char *data, size_t data_size, uint8_t id) 
+int8_t esp8266_WriteATCIPSEND(char *data, size_t data_size, uint8_t id) 
 {
 	char temp[32];
 	char temp_2[16];
@@ -376,7 +373,7 @@ int8_t esp8266_WriteATCIPCLOSE(char *buf, uint8_t id)
 	return 0;
 }
 
-inline int8_t esp8266_GetIp(char *buf)
+int8_t esp8266_GetIp(char *buf)
 {
 	memset(buf, 0, BUF_MEM_SIZE);
 	return esp8266_SendGetReply(AT_CIFSR, "OK\0", buf, 100, 10);
@@ -454,8 +451,8 @@ static int8_t esp8266_state0(const uint8_t data, char *buf,
 	return ret;
 }
 
-static int8_t esp8266_state1(const uint8_t data, char *buf, const size_t buf_len,
-			     uint8_t *state, uint8_t *cnt)
+static int8_t esp8266_state1(char *buf, const size_t buf_len,
+			     uint8_t *state)
 {
 	int8_t ret;
 	uint16_t id, len;
@@ -550,10 +547,19 @@ void esp8266_CheckInput(uint8_t data)
 		ret = esp8266_state0(data, buf, sizeof(buf), &state);
 		break;
 	case 1:
-		ret = esp8266_state1(data, buf, sizeof(buf), &state, NULL);
+		ret = esp8266_state1(buf, sizeof(buf), &state);
 		break;
 	default:
 		state = 0;
 		break;
 	}	
+}
+
+void esp8266_Update() 
+{
+	int ret;
+	char buf[BUF_MEM_SIZE];
+	const char *update = "AT+CIUPDATE\r\n";
+	ret = esp8266_SendGetReply(update, "OK", buf, 100, 5*600);
+	(void)ret;	
 }

@@ -5,6 +5,9 @@
 #include <errno.h>
 #include <string.h>
 
+/**
+ * @brief macros to set size of buffers at compile time
+ */
 #define BUF_MEM_SIZE 512
 #define TEMP_MEM_SIZE 32
 
@@ -23,15 +26,14 @@
  */
 
 
-
-
 /**
  * @brief - simple_buffer struct, represents buffer.
- * @param lock if there was byte insert in time of searching, data could
- * be corrupted. To avoid this, temp buffer is used to store new incoming data,
- * and lock is set to 1 to signal tail variable is not actual (and to put data into temp).
- * @param ignore sometimes there is not need for bytes. Ignore is a counter which
- * describes count of bytes to ignore.
+ * @param lock variable as a mutex
+ * @param temp temporary buffer used when lock is locked.
+ * @param memory main buffer
+ * @param head head of circular buffer
+ * @param tail tail of circular buffer
+ * @ignore count of bytes to ignore.
  */
 struct simple_buffer{
 	volatile uint8_t lock;
@@ -74,6 +76,7 @@ int8_t buffer_set_text(struct simple_buffer *buf, const char *text,
  * @param label text to search and from which start coping.
  * @param limiter text that ends coping.
  * @param output buffer in which text is placed.
+ * @retval 0 on success, negative error otherwise. 
  */ 
 int8_t buffer_SearchGetLabel(struct simple_buffer *buf, const char *label, 
 			     const char *limiter, char *output);

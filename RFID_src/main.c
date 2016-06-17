@@ -56,7 +56,7 @@ void PrintDate()
 	}
 }
 
-inline static void LcdWrite(char *buf, size_t x, size_t y) {
+static void LcdWrite(char *buf, size_t x, size_t y) {
 	TM_ILI9341_DisplayOn();
 	TIM2_TurnOffLCDAfterTimeInterval(10);
 	TM_ILI9341_Puts(x, y, buf, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
@@ -147,6 +147,11 @@ int8_t CheckFormat(char *buf)
 
 	if (ptr) 
 		return 2;
+
+	ptr = strstr(buf, "HTTP");
+
+	if (ptr) 
+		return 3;
 		
 	return 0;
 }
@@ -375,8 +380,9 @@ int8_t PageRequest()
 		} else if (ret == 2) {
 			AddNewRFIDCard(buf);
 			strcpy(buf, "zarzadzaj.html");
-		} else 
+		} else {
 			strcpy(buf, "index.html");
+		}
 	}
 	return SendPage(buf, id);
 }
@@ -450,8 +456,6 @@ void CheckWiFi()
 		Server_Init();
 		PrintIp();
 		
-		esp8266_ClearResetFlag();
-		
 		if (buffer_IsFull(&UART2_receive_buffer)) {
 			buffer_Reset(&UART2_receive_buffer);
 		}
@@ -465,9 +469,10 @@ void CheckWiFi()
  *
  * @param buf global buffer.
  * @param temp buffer with ID written in ASCII.
- * @param temp_len size of temp buffer. 
+ * @param temp_len size of temp buffer.
+ * @retval int8_t 0 on success, negative value on failure.
  */
-int8_t SaveRFIDToHistory(char *buf, const char *temp, size_t temp_len)
+int8_t SaveRFIDToHistory(char *buf, const char *temp)
 {
 	FIL file;
 	int8_t ret = 0;
@@ -574,7 +579,7 @@ int8_t CheckNewRFID()
 			TM_ILI9341_DrawFilledRectangle(0, 100, 239, 319, ILI9341_COLOR_RED);
 			LcdWrite("Nie mozna odczytac karty!", 0, 100);
 		} else {
-			SaveRFIDToHistory(buf, temp, sizeof(temp));	
+			SaveRFIDToHistory(buf, temp);	
 			PresentRFIDPermission(buf, temp); 
 		}
 		TIM2_TurnOnRFIDAfterTimeInterval(4);
@@ -611,7 +616,7 @@ void SD_Init()
 }
 
 /**
- * @brief Function downloads actual time from the Internet. 
+ * @brief Function downloads actual time from the Internet and updates RTC. 
  *
  * If it fails, it hangs program.
  */
@@ -635,8 +640,8 @@ void Clock_Init()
 
 int main(void)
 {
-
 	SetInterrupts();
+	
 	TIM2_Init();
 	TM_ILI9341_Init();
 	xpt2046_Init();
