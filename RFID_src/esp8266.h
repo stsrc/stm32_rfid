@@ -130,7 +130,5 @@ int8_t esp8266_WaitForAck(const uint8_t id, const char *command,
  */
 void esp8266_ClearResetFlag();
 
-void esp8266_Update();
-
 void esp8266_CheckInput(uint8_t data);
 #endif

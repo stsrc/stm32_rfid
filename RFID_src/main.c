@@ -14,6 +14,8 @@
 #include "TIM2.h"
 #include <string.h>
 
+FATFS SDFatFs;
+
 /**
  * @addtogroup RFID_System libraries
  * @{
@@ -193,7 +195,7 @@ int8_t ChangeRFIDSettings(char *buf)
 		f_close(&file);
 		return -2;
 	}
-	
+
 	sscanf(id, "%hu", &cnt);
 	temp = buf;
 	
@@ -242,6 +244,17 @@ int8_t SendPage(char *buf, const uint8_t id)
 	}
 
 	file_size = f_size(&html_file);
+	
+	if (!file_size) {
+		ret = esp8266_WriteATCIPCLOSE(buf, id);
+		if (ret) {
+			ret = f_close(&html_file);
+			return -1;
+		}
+
+		ret = f_close(&html_file);
+		return -2;
+	}
 
 	while(file_size) {
 		to_read = (file_size > BUF_MEM_SIZE - 1) ? (BUF_MEM_SIZE - 1) : file_size;
@@ -252,7 +265,7 @@ int8_t SendPage(char *buf, const uint8_t id)
 		if (ret) {
 			esp8266_WriteATCIPCLOSE(buf, id);
 			f_close(&html_file);
-			return -2;
+			return -3;
 		}
 		
 		file_size -= bytes_read;
@@ -263,7 +276,7 @@ int8_t SendPage(char *buf, const uint8_t id)
 			ret = esp8266_WaitForAck(id, "SEND\0", 100, 10);
 			if (ret) {
 				f_close(&html_file);
-				return -3;
+				return -4;
 			}
 		} else {
 			cnt++;
@@ -272,21 +285,21 @@ int8_t SendPage(char *buf, const uint8_t id)
 		ret = esp8266_WriteATCIPSEND(buf, bytes_read, id);
 		if (ret) {
 			f_close(&html_file);
-			return -4;
+			return -5;
 		}
 	}
 	
 	ret = esp8266_WaitForAck(id, "SEND\0", 100, 10);
 	if (ret) {
 		f_close(&html_file);
-		return -5;
+		return -6;
 	}
 
 	ret = esp8266_WriteATCIPCLOSE(buf, id);
 
 	ret = f_close(&html_file);
 	if (ret)
-		return -6;
+		return -7;
 
 	return 0;
 }
@@ -308,27 +321,32 @@ int8_t AddNewRFIDCard(char *buf)
 	int8_t ret; 
 	uint bytes_cnt;
 	char *ptr;
-	
+	int cnt = 0;	
 	CLEAR_BIT(UART_1_flag, ready_bit);
 
 	while(!(READ_BIT(UART_1_flag, ready_bit))) {
 		delay_ms(100);
+		cnt++;
+		if (cnt == 100) {
+			TIM2_TurnOnRFIDAfterTimeInterval(3);
+			return -1;
+		}
 	}
-
-	CLEAR_BIT(UART_1_flag, ready_bit);
 	
+	CLEAR_BIT(UART_1_flag, ready_bit);
 	RFID_CardNumber(temp); 
+
+	TIM2_TurnOnRFIDAfterTimeInterval(3);
 
 	ret = f_open(&file, "ID_list.txt", FA_OPEN_EXISTING | FA_READ | FA_WRITE);
 	if (ret)
-		return -1;
-
+		return -2;
 	
 	memset(buf, 0, BUF_MEM_SIZE);
 	ret = f_read(&file, buf, BUF_MEM_SIZE - 1, &bytes_cnt);
 	if (ret) {
 		f_close(&file);
-		return -2;
+		return -3;
 	}
 	
 	ptr = strstr(buf, temp);
@@ -338,24 +356,21 @@ int8_t AddNewRFIDCard(char *buf)
 	}
 	
 	ret = f_lseek(&file, 0);
-	
-	strcat(buf, ";");
+		
 	strcat(buf, temp);
-	strcat(buf, ";2");
+	strcat(buf, ";2;");
 	
 	ret = f_write(&file, buf, strlen(buf), &bytes_cnt);
 	f_close(&file);
 	if (ret < 0) {
-		return -1;	
+		return -4;	
 	}
-	
-	TIM2_TurnOnRFIDAfterTimeInterval(1);
+
 	return 0;
 }
 
 /**
  * @brief Server decision function.
- *
  *
  * It checks if there is pending HTTP request, if yes, function checks what 
  * kind of page is pending (is it GET, or changing permission of a RFID card).
@@ -597,7 +612,6 @@ int8_t CheckNewRFID()
  */
 void SD_Init() 
 {
-	FATFS SDFatFs;
 	int cnt = 0;
 	char org[5];
 	int8_t ret;
