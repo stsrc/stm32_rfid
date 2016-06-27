@@ -2,7 +2,7 @@
 
 Study project.  
 
-Idea of project was to create full RFID system with web interface.  
+Full RFID system with web interface.  
 
 Main microcontroller	- STM32F100RB  
 Web module		- esp8266  
@@ -12,8 +12,9 @@ Touchpanel		- xpt2046 driver
 SD Card			- included in LCD display  
   
 Features implemented:  
+* displaing actual time, display turn off after time interval. Turn on by touch
 * Sensing RFID cards  
-* Specific respons to single RFID card which bases on saved permission  
+* Specific respons to single RFID card displayed on LCD. Response bases on saved permission list
 * Making and saving history of sensed cards (with date of this event)  
 * Read only access to history from web  
 * Read and write access to permission list from web  
