@@ -12,13 +12,23 @@ void RTC_SetDate(uint16_t year, uint8_t month, uint8_t day, uint8_t hour,
 {
 	uint32_t days = 0;
 	uint8_t months = 1;
-	uint8_t years = 0;
-	uint8_t leap = 0;
+	uint32_t years = 0;
 	uint32_t temp = 0;
-	years = (2016 - year);
-	leap = years / 4;
-	years -= leap;
-	days = years * 356 + leap * 366 + day;
+	uint32_t cnt = 2016;
+
+	years = year - cnt;
+
+	for (uint32_t i = 0; i < years; i++) {
+		if ((cnt/4) * 4 == cnt)
+			days += 366;
+		else
+			days += 365;
+		
+		cnt++;
+	}
+
+	days += day;
+
 	if (hour >= 24) {
 		days++;
 		hour -= 24;
@@ -30,14 +40,12 @@ void RTC_SetDate(uint16_t year, uint8_t month, uint8_t day, uint8_t hour,
 	
 		else if (months == 4 || months == 6 || months == 9 || months == 11)
 			days += 30;
-		
-		else if (!years) 
+	
+		else if ((months == 2) && ((years/4) * 4 == years))
 			days += 29;
 
-		else if ((years/4) * 4 == years)
+		else if (months == 2)
 			days += 28;
-		else
-			days += 29;
 
 		months++;
 	}
@@ -108,7 +116,7 @@ uint8_t RTC_GetDate(uint16_t *year, uint8_t *month, uint8_t *day,
 		sec_s = temp % 60;
 		temp -= sec_s;
 
-		min_s = temp / 60 % 60;
+		min_s = (temp / 60) % 60;
 		temp -= min_s * 60;
 
 		hour_s = (temp / 3600) % 24;

@@ -92,7 +92,7 @@ int8_t UpdateTime()
 	ret = esp8266_GetDate(&day, &month, &year, &hour, &minute, &second);
 	if (ret)
 		return ret;
-	RTC_SetDate(year, month, day, hour + 2, minute, second);	
+	RTC_SetDate(year, month, day, hour, minute, second);	
 	return 0;
 }
 
