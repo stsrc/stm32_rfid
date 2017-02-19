@@ -7,14 +7,10 @@ void RTC_IRQHandler() {
 	static uint8_t test = 0;
 	test++;
 	RTC_second_flag = 1;
-	if (test == 60) {
+	if (test == 40) {
 		esp8266_second_flag = 1;
 		test = 0;
 	}
-	if (test % 2)
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9, GPIO_PIN_RESET);
-	else
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9, GPIO_PIN_SET);
 
 	RTC->CRL &= ~RTC_CRL_SECF;
 }
@@ -289,15 +285,6 @@ uint8_t RTC_GetDate(uint16_t *year, uint8_t *month, uint8_t *day,
 
 HAL_StatusTypeDef RTC_Init()
 {
-	GPIO_InitTypeDef init;
-	init.Mode = GPIO_MODE_OUTPUT_PP;
-	init.Pull = GPIO_PULLUP;
-	init.Speed = GPIO_SPEED_FREQ_HIGH;
-	init.Pin = GPIO_PIN_8 | GPIO_PIN_9;
-	__HAL_RCC_GPIOC_CLK_ENABLE();
-	HAL_GPIO_Init(GPIOC, &init);
-	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9, GPIO_PIN_RESET);
-
 	/*
 	 * After reset access to RTC registers is disabled, so
 	 * there is need to update RCC register. Look to datasheet

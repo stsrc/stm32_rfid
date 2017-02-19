@@ -676,10 +676,10 @@ int main(void)
 	
 	TIM2_Init();
 	TM_ILI9341_Init();
-	xpt2046_Init();
 	delay_init();
 	RFID_Init();
 	RTC_Init();
+	xpt2046_Init();
 
 	SD_Init();
 	WiFi_Init();

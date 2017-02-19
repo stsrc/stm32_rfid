@@ -499,18 +499,17 @@ static int8_t esp8266_state1(char *buf, const size_t buf_len,
 
 	*state = 0;
 	MoveToSign(buf, buf_len, '+');
-
 	memset(file, 0, HELP_BUF_SIZE);
 
 	ret = sscanf(buf, "+IPD,%hu,%hu:GET /%s HTTP", &id, &len, file);
-
-	if (id > 4) {
-		return -1;
-	}
-
-	SetChannelTransmit(file, id);
 	
-	len -= strlen("+IPD,x,xxx: GET / HTTP") + strlen(file) + 20; 
+	if (id < 5) 
+		SetChannelTransmit(file, id);
+
+	if (ret == 3)	
+		len -= strlen("+IPD,x,xxx: GET / HTTP") + strlen(file) + 20; 
+	else
+		len = 250; 
 
 	buffer_SetIgnore(&UART2_receive_buffer, len); 
 	memset(buf, 0, buf_len);
