@@ -260,8 +260,8 @@ uint8_t RTC_GetDate(uint16_t *year, uint8_t *month, uint8_t *day,
 		temp = (RTC->CNTH << 16) | RTC->CNTL;
 
 		RTC_CalculateDate(temp, &month_s, &day_s, &hour_s, &min_s, &sec_s, &year_s);
-	//	RTC_CheckDST(&temp, year_s, month_s, day_s, hour_s);
-	//	RTC_CalculateDate(temp, &month_s, &day_s, &hour_s, &min_s, &sec_s, &year_s);		
+		RTC_CheckDST(&temp, year_s, month_s, day_s, hour_s);
+		RTC_CalculateDate(temp, &month_s, &day_s, &hour_s, &min_s, &sec_s, &year_s);		
 
 		ret = 1;
 		RTC_second_flag = 0;
