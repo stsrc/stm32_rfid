@@ -61,6 +61,10 @@ int8_t esp8266_GetIp(char *buf);
  */
 int8_t esp8266_MakeAsServer();
 
+int8_t esp8266_SwitchToClient();
+
+int8_t esp8266_SwitchToServer();
+
 /**
  * @brief HTTP requests check.
  *

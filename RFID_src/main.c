@@ -451,6 +451,29 @@ void Server_Init()
 	CheckError("Server init failed!", ret);
 }
 
+/**
+ * @brief Function downloads actual time from the Internet and updates RTC. 
+ *
+ * If it fails, it hangs program.
+ */
+void Clock_Init() 
+{
+	int cnt = 0;
+	int8_t ret;	
+	do {
+		LcdWrite("Downloading actual time...", 0, 0);
+		ret = UpdateTime();
+		if (ret) {
+			LcdWrite("Download failed! Retrying in 3 sec.\0", 0, 20);
+			delay_ms(3000);
+			LcdClear();
+		}
+		cnt++;
+	} while (ret && cnt < 3);
+	LcdClear();
+	CheckError("Time download failed!", ret);
+}
+
 void ResetESP8266() 
 {
 	TM_ILI9341_DrawFilledRectangle(0, 0, 239, 319, ILI9341_COLOR_BLACK);
@@ -461,12 +484,13 @@ void ResetESP8266()
 
 	buffer_Reset(&UART2_receive_buffer);
 
-	WiFi_Init();	
+	WiFi_Init();
+	esp8266_PingGoogle();
 	Server_Init();
 	PrintIp();
 		
 	buffer_Reset(&UART2_receive_buffer);
-
+	esp8266_CheckResetFlag();
 }
 
 /**
@@ -478,9 +502,18 @@ void ResetESP8266()
  */
 void CheckWiFi() 
 {
+	int ret = 0;
 	if(esp8266_CheckResetFlag()) {
 		ResetESP8266();
 	} else if (esp8266_second_flag) {
+		esp8266_SwitchToClient();
+		ret = esp8266_PingGoogle();
+		
+		if (ret) 
+			ResetESP8266();
+		else
+			esp8266_SwitchToServer();
+
 		esp8266_second_flag = 0;
 	}
 }
@@ -635,29 +668,6 @@ void SD_Init()
 	} while (ret && cnt < 3);
 	LcdClear();	
 	CheckError("FATFS initalization failed!", ret);
-}
-
-/**
- * @brief Function downloads actual time from the Internet and updates RTC. 
- *
- * If it fails, it hangs program.
- */
-void Clock_Init() 
-{
-	int cnt = 0;
-	int8_t ret;	
-	do {
-		LcdWrite("Downloading actual time...", 0, 0);
-		ret = UpdateTime();
-		if (ret) {
-			LcdWrite("Download failed! Retrying in 3 sec.\0", 0, 20);
-			delay_ms(3000);
-			LcdClear();
-		}
-		cnt++;
-	} while (ret && cnt < 3);
-	LcdClear();
-	CheckError("Time download failed!", ret);
 }
 
 int main(void)

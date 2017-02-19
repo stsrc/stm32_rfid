@@ -12,6 +12,7 @@
 #define AT_CIPMODE_0		"AT+CIPMODE=0\r\n\0"
 #define AT_CIPMUX_1		"AT+CIPMUX=1\r\n\0"
 #define AT_CIPSERVER		"AT+CIPSERVER=1,80\r\n\0"
+#define AT_CIPCLIENT		"AT+CIPSERVER=0\r\n\0"
 #define AT_CIPSTO		"AT+CIPSTO=7000\r\n\0"
 #define AT_CIFSR		"AT+CIFSR\r\n\0"
 #define AT_CIPSEND		"AT+CIPSEND=\0"
@@ -90,7 +91,7 @@ int8_t esp8266_Send(const char *data, size_t data_size)
 
 static void SetChannelTransmit(char *buf, uint8_t id)
 {
-	memset(chn_data.buf[id], 0, sizeof(chn_data.buf[id]));
+	memset(chn_data.buf[id], 0, HELP_BUF_SIZE);
 	strncpy(chn_data.buf[id], buf, HELP_BUF_SIZE - 1);
 	SetChannel(id, CHNL_STATE_TRANSMIT);
 }
@@ -191,6 +192,32 @@ static int8_t esp8266_ConnectToWiFi()
 	return 0;
 }
 
+int8_t esp8266_SwitchToServer()
+{
+	int8_t ret;
+	ret = esp8266_Send(AT_CIPSERVER, strlen(AT_CIPSERVER));
+	if (ret)
+		return -5;
+	ret = esp8266_WaitForOk(AT_CIPSERVER, 100, 100);
+	if (ret)
+		return -6;
+
+	return 0;
+}
+
+int8_t esp8266_SwitchToClient()
+{
+	int8_t ret;
+	ret = esp8266_Send(AT_CIPCLIENT, strlen(AT_CIPCLIENT));
+	if (ret)
+		return -5;
+	ret = esp8266_WaitForOk(AT_CIPCLIENT, 100, 100);
+	if (ret)
+		return -6;
+
+	return 0;
+}
+
 int8_t esp8266_MakeAsServer()
 {
 	int8_t ret;
@@ -261,8 +288,8 @@ static inline void ParseDate(uint8_t *day, uint8_t *month, uint16_t *year,
 	unsigned short temp_h, temp_min, temp_sec, temp_day, temp_year;
 	char temp_buf[16];
 	char temp[5];
-	memset(temp, 0, sizeof(temp));
-	memset(temp_buf, 0, sizeof(temp_buf));
+	memset(temp, 0, 5);
+	memset(temp_buf, 0, 16);
 	sscanf(buf, "%s %hu %s %hu %hu:%hu:%hu", temp, &temp_day, temp_buf, 
 	       &temp_year, &temp_h, &temp_min, &temp_sec);
 	*hour = (uint8_t)temp_h;
@@ -364,7 +391,7 @@ int8_t esp8266_WriteATCIPCLOSE(char *buf, uint8_t id)
 {
 	char temp[4];
 	int ret;
-	memset(temp, 0, sizeof(temp));
+	memset(temp, 0, 4);
 	memset(buf, 0, BUF_MEM_SIZE);
 	sprintf(temp, "%u\r\n", id);
 	strcpy(buf, AT_CLOSE_SOCKET);
@@ -473,9 +500,13 @@ static int8_t esp8266_state1(char *buf, const size_t buf_len,
 	*state = 0;
 	MoveToSign(buf, buf_len, '+');
 
-	memset(file, 0, sizeof(file));
+	memset(file, 0, HELP_BUF_SIZE);
 
 	ret = sscanf(buf, "+IPD,%hu,%hu:GET /%s HTTP", &id, &len, file);
+
+	if (id > 4) {
+		return -1;
+	}
 
 	SetChannelTransmit(file, id);
 	

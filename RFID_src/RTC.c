@@ -7,14 +7,14 @@ void RTC_IRQHandler() {
 	static uint8_t test = 0;
 	test++;
 	RTC_second_flag = 1;
-	if (test == 30) {
+	if (test == 60) {
 		esp8266_second_flag = 1;
 		test = 0;
 	}
-//	if (test % 2)
-//		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9, GPIO_PIN_RESET);
-//	else
-//		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9, GPIO_PIN_SET);
+	if (test % 2)
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9, GPIO_PIN_RESET);
+	else
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9, GPIO_PIN_SET);
 
 	RTC->CRL &= ~RTC_CRL_SECF;
 }
