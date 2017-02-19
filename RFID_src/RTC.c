@@ -7,6 +7,31 @@ void RTC_IRQHandler() {
 	RTC->CRL &= ~RTC_CRL_SECF;
 }
 
+static uint8_t RTC_YearIsLeap(uint16_t year)
+{
+	if (((year / 4) * 4 == year) && (year % 400 == 0))
+		return 1;
+	else if (((year / 4) * 4 == year) && (year % 100 != 0))
+		return 1;
+
+	return 0;
+}
+
+static uint8_t RTC_DaysInMonth(uint16_t year, uint8_t month)
+{
+	if (month == 1 || month == 3 || month == 5 || month == 7 || month == 8
+			 || month == 10 || month == 12) 
+		return 31;
+	else if (RTC_YearIsLeap(year) && month == 2)
+		return 29;
+	else if (month == 2)
+		return 28;
+	else
+		return 30;
+
+	return 0;
+}
+
 void RTC_SetDate(uint16_t year, uint8_t month, uint8_t day, uint8_t hour, 
 		 uint8_t min, uint8_t sec)
 {
@@ -19,7 +44,7 @@ void RTC_SetDate(uint16_t year, uint8_t month, uint8_t day, uint8_t hour,
 	years = year - cnt;
 
 	for (uint32_t i = 0; i < years; i++) {
-		if ((cnt/4) * 4 == cnt)
+		if (RTC_YearIsLeap(cnt))
 			days += 366;
 		else
 			days += 365;
@@ -33,22 +58,12 @@ void RTC_SetDate(uint16_t year, uint8_t month, uint8_t day, uint8_t hour,
 		days++;
 		hour -= 24;
 	}
+
 	while (months < month) {
-		if (months == 1 || months == 3 || months == 5 || months == 7 
-		    || months == 8 || months == 10 || months == 12)
-			days += 31;
-	
-		else if (months == 4 || months == 6 || months == 9 || months == 11)
-			days += 30;
-	
-		else if ((months == 2) && ((years/4) * 4 == years))
-			days += 29;
-
-		else if (months == 2)
-			days += 28;
-
+		days += RTC_DaysInMonth(cnt, months);
 		months++;
 	}
+
 	temp = days * 60 * 60 * 24 + hour * 60 * 60 + min * 60 + sec;
 	/* Entering configuration mode */
 	RTC->CRL |= RTC_CRL_CNF;
@@ -98,80 +113,155 @@ uint8_t RTC_GetTime(uint8_t *hour, uint8_t *min, uint8_t *sec) {
 	return ret;
 }
 
+static void RTC_CalculateDate(uint32_t temp, uint8_t *month_s, uint8_t *day_s, 
+			 uint8_t *hour_s, uint8_t *min_s, uint8_t *sec_s, 
+			 uint16_t *year_s)
+{
+	uint8_t not_leap = 0;
+	*year_s = 0;
+	*month_s = 0;
+	*day_s = 0;
+	*sec_s = temp % 60;
+	temp -= *sec_s;
+
+	*min_s = (temp / 60) % 60;
+	temp -= *min_s * 60;
+
+	*hour_s = (temp / 3600) % 24;
+	temp -= *hour_s * 3600;
+		
+	temp = temp / (60 * 60 * 24);
+
+	*year_s = 2016;
+	while(temp) {
+		if (*month_s == 0) {
+			*month_s = 1;
+		}
+		else if (*month_s == 1 || *month_s == 3 || *month_s == 5 || *month_s == 7 || *month_s == 8
+			 || *month_s == 10 || *month_s == 12) {
+			if (temp > 31) {
+				*month_s = *month_s + 1;
+				if (*month_s == 13) {
+					*month_s = 1;
+					not_leap++;
+					not_leap %= 4;
+					year_s++;
+				}
+				temp -= 31;	
+			} else {
+				*day_s = temp;
+				temp = 0;
+			}
+		}
+
+		else if (*month_s == 2) {
+			if (not_leap && (temp > 28)) {
+			*month_s = *month_s + 1;
+				temp -= 28;
+			} else if (not_leap) {
+				*day_s = temp;
+				temp = 0;	
+			} else if (!not_leap && (temp > 29)) {
+				*month_s = *month_s + 1;
+				temp -= 29;
+			} else {
+				*day_s = temp;
+				temp = 0;
+			}
+		}
+
+		else if (*month_s == 4 || *month_s == 6 || *month_s == 9 || *month_s == 11) {
+			if (temp > 30) {
+				*month_s = *month_s + 1;
+				temp -= 30;
+			} else {
+				*day_s = temp;
+				temp = 0;
+			}
+		}	
+	}
+}
+
+static uint8_t RTC_GetLastSunday(uint16_t year, uint8_t month, uint8_t day)
+{
+	uint16_t tmp, tmp_2 = 0;
+	const uint8_t months_val[] = {0, 0, 3, 3, 6, 1, 4, 6, 2,5, 0, 3, 5};
+	uint8_t wod;
+	tmp = day + months_val[month];
+	tmp %= 7;
+	tmp_2 = (year % 100) % 28;
+	tmp_2 += (year % 100) / 4;
+
+	if (RTC_YearIsLeap(year) && (month == 1 || month == 2))
+		tmp_2--;
+
+	wod = (tmp + tmp_2) % 7;
+
+	if (wod)
+		return 0;
+
+	if (day + 7 > RTC_DaysInMonth(year, month)) {
+		return day; 
+	} else {
+		while (day + 7 < RTC_DaysInMonth(year, month)) 
+			day += 7;
+
+		return day;
+	}
+
+	return 0;
+}
+
+static uint8_t RTC_CheckDST(uint32_t *temp, uint16_t year, uint8_t month, 
+			    uint8_t day, uint8_t hour)
+{
+	uint8_t tmp;
+
+	if (month > 10 || month < 3) {
+		*temp += 60 * 60;
+	} else if (month < 10 && month > 3) {
+		*temp += 2 * 60 * 60;
+	} else if (month == 3) {
+		tmp = RTC_GetLastSunday(year, month, day);
+		if (day < tmp) {
+			*temp += 60 * 60;
+		} else if (day > tmp) {
+			*temp += 2 * 60 * 60;
+		} else {
+			if (hour < 1)
+				*temp += 60 * 60;
+			else
+				*temp += 2 * 60 * 60;
+		}
+	} else {
+		tmp = RTC_GetLastSunday(year, month, day);
+		if (day < tmp) {
+			*temp += 2 * 60 * 60;
+		} else if (day > tmp) {
+			*temp += 60 * 60;
+		} else {
+			if (hour < 1)
+				*temp += 2 * 60 * 60;
+			else
+				*temp += 60 * 60;
+		}
+	}
+	return 0;	
+}
 
 uint8_t RTC_GetDate(uint16_t *year, uint8_t *month, uint8_t *day, 
 		    uint8_t *hour, uint8_t *min, uint8_t *sec) {
 	uint32_t temp;
 	uint8_t ret = 0;
-	uint8_t not_leap = 0;
 	static uint8_t month_s, day_s, hour_s, min_s, sec_s;
 	static uint16_t year_s;
 	if (RTC_second_flag) {
-		year_s = 0;
-		month_s = 0;
-		day_s = 0;
 
 		temp = (RTC->CNTH << 16) | RTC->CNTL;
 
-		sec_s = temp % 60;
-		temp -= sec_s;
-
-		min_s = (temp / 60) % 60;
-		temp -= min_s * 60;
-
-		hour_s = (temp / 3600) % 24;
-		temp -= hour_s * 3600;
-		
-		temp = temp / (60 * 60 * 24);
-
-		year_s = 2016;
-		while(temp) {
-			if (month_s == 0) {
-				month_s = 1;
-			}
-			else if (month_s == 1 || month_s == 3 || month_s == 5 || month_s == 7 || month_s == 8
-				 || month_s == 10 || month_s == 12) {
-				if (temp > 31) {
-					month_s++;
-					if (month_s == 13) {
-						month_s = 1;
-						not_leap++;
-						not_leap %= 4;
-						year_s++;
-					}
-					temp -= 31;	
-				} else {
-					day_s = temp;
-					temp = 0;
-				}
-			}
-
-			else if (month_s == 2) {
-				if (not_leap && (temp > 28)) {
-					month_s++;
-					temp -= 28;
-				} else if (not_leap) {
-					day_s = temp;
-					temp = 0;	
-				} else if (!not_leap && (temp > 29)) {
-					month_s++;
-					temp -= 29;
-				} else {
-					day_s = temp;
-					temp = 0;
-				}
-			}
-
-			else if (month_s == 4 || month_s == 6 || month_s == 9 || month_s == 11) {
-				if (temp > 30) {
-					month_s++;
-					temp -= 30;
-				} else {
-					day_s = temp;
-					temp = 0;
-				}
-			}	
-		}
+		RTC_CalculateDate(temp, &month_s, &day_s, &hour_s, &min_s, &sec_s, &year_s);
+	//	RTC_CheckDST(&temp, year_s, month_s, day_s, hour_s);
+	//	RTC_CalculateDate(temp, &month_s, &day_s, &hour_s, &min_s, &sec_s, &year_s);		
 
 		ret = 1;
 		RTC_second_flag = 0;
