@@ -15,7 +15,7 @@
 #include <string.h>
 
 FATFS SDFatFs;
-
+extern __IO uint8_t esp8266_second_flag;
 /**
  * @addtogroup RFID_System libraries
  * @{
@@ -451,6 +451,24 @@ void Server_Init()
 	CheckError("Server init failed!", ret);
 }
 
+void ResetESP8266() 
+{
+	TM_ILI9341_DrawFilledRectangle(0, 0, 239, 319, ILI9341_COLOR_BLACK);
+	LcdWrite("esp8266 reset occured!", 0, 0);
+	LcdWrite("esp8266 reinit in 1 sec!", 0, 10);
+	delay_ms(1000);
+	TM_ILI9341_DrawFilledRectangle(0, 0, 239, 319, ILI9341_COLOR_BLACK);
+
+	buffer_Reset(&UART2_receive_buffer);
+
+	WiFi_Init();	
+	Server_Init();
+	PrintIp();
+		
+	buffer_Reset(&UART2_receive_buffer);
+
+}
+
 /**
  * @brief Function checks if esp8266 has lost connection to Wi-Fi. 
  *
@@ -461,19 +479,9 @@ void Server_Init()
 void CheckWiFi() 
 {
 	if(esp8266_CheckResetFlag()) {
-		TM_ILI9341_DrawFilledRectangle(0, 0, 239, 319, ILI9341_COLOR_BLACK);
-		LcdWrite("esp8266 reset occured!", 0, 0);
-		LcdWrite("esp8266 reinit in 3 sec!", 0, 10);
-		delay_ms(3000);
-		TM_ILI9341_DrawFilledRectangle(0, 0, 239, 319, ILI9341_COLOR_BLACK);
-		
-		WiFi_Init();	
-		Server_Init();
-		PrintIp();
-		
-		if (buffer_IsFull(&UART2_receive_buffer)) {
-			buffer_Reset(&UART2_receive_buffer);
-		}
+		ResetESP8266();
+	} else if (esp8266_second_flag) {
+		esp8266_second_flag = 0;
 	}
 }
 

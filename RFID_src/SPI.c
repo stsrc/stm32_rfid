@@ -5,10 +5,8 @@ static DMA_HandleTypeDef dma_handler;
 
 void SPI_show_error(HAL_StatusTypeDef rt)
 {
-	if (rt) {
+	if (rt) 
 		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9, GPIO_PIN_SET);
-		while(1);
-	}
 }
 
 void DMA1_Channel3_IRQHandler(void) 

@@ -25,6 +25,8 @@
 #define HELP_BUF_SIZE 32
 #define HELP_BUF_SIZE_2 64
 
+__IO uint8_t esp8266_second_flag = 0;
+
 struct channel_data {
 	char buf[5][HELP_BUF_SIZE];
 	int8_t state[5];
@@ -42,12 +44,12 @@ static void ClearChannel(const uint8_t id, const uint8_t state)
 
 static void SetChannel(const uint8_t id, const uint8_t state)
 {
-		chn_data.state[id] |= state;
+	chn_data.state[id] |= state;
 }
 
 static int8_t CheckChannel(const uint8_t id, const uint8_t state)
 {
-		return chn_data.state[id] & state;
+	return chn_data.state[id] & state;
 }
 
 int8_t esp8266_ScanForFile(char *file, uint8_t *id)
@@ -121,7 +123,7 @@ static void esp8266_InitPins()
 static void esp8266_HardReset() 
 {
 	HAL_GPIO_WritePin(ESP8266_RST_PORT, ESP8266_RST_PIN, GPIO_PIN_RESET);
-	delay_ms(1500);
+	delay_ms(5000);
 	HAL_GPIO_WritePin(ESP8266_RST_PORT, ESP8266_RST_PIN, GPIO_PIN_SET);
 	delay_ms(1000);	
 }
@@ -165,6 +167,12 @@ int8_t esp8266_WaitForAck(const uint8_t id, const char *command,
 	return ret;	
 }
 
+uint8_t esp8266_PingGoogle()
+{
+	esp8266_Send(AT_PING_GOOGLE, strlen(AT_PING_GOOGLE));
+	return esp8266_WaitForOk(AT_PING_GOOGLE, 100, 100);
+}
+
 static int8_t esp8266_ConnectToWiFi()
 {
 	int ret;
@@ -176,8 +184,8 @@ static int8_t esp8266_ConnectToWiFi()
 	ret = esp8266_WaitForOk(WIFI_PASSWD_SECRET, 100, 100);
 	if (ret)
 		return -2;
-	esp8266_Send(AT_PING_GOOGLE, strlen(AT_PING_GOOGLE));
-	ret = esp8266_WaitForOk(AT_PING_GOOGLE, 100, 100);
+
+	ret = esp8266_PingGoogle(); 
 	if (ret)
 		return -3;
 	return 0;
@@ -221,9 +229,10 @@ int8_t esp8266_Init()
 	esp8266_HardReset();
 	UART_2_init();
 	buffer_Reset(&UART2_transmit_buffer);
-	delay_ms(5000);
+	buffer_Reset(&UART2_receive_buffer);
+	delay_ms(15000);
 	esp8266_Send(RST_CMD, strlen(RST_CMD));
-	delay_ms(5000);
+	delay_ms(15000);
 	buffer_Reset(&UART2_receive_buffer);
 	ret = esp8266_ConnectToWiFi();
 	if (ret)
@@ -382,10 +391,9 @@ int8_t esp8266_GetIp(char *buf)
 int8_t esp8266_CheckResetFlag()
 {
 	int8_t ret = chn_data.reset;
-	if (ret) {
+	if (ret) 
 		memset(&chn_data, 0, sizeof(struct channel_data));
-		buffer_Reset(&UART2_receive_buffer);
-	}
+
 	return ret;
 }
 
