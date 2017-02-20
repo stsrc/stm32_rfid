@@ -37,6 +37,9 @@ struct channel_data {
 static struct channel_data chn_data;
 static uint8_t do_it = 0;
 
+static char buf_tmp[100];
+static __IO int flag_tmp = 0;
+
 static void ClearChannel(const uint8_t id, const uint8_t state)
 {
 	chn_data.state[id] &= ~state;
@@ -56,9 +59,15 @@ static int8_t CheckChannel(const uint8_t id, const uint8_t state)
 int8_t esp8266_ScanForFile(char *file, uint8_t *id)
 {
 	do_it = 1;
+	if (flag_tmp) {
+		TM_ILI9341_DrawFilledRectangle(10, 90, 239, 120, ILI9341_COLOR_BLACK); 
+		TM_ILI9341_Puts(10, 100, buf_tmp, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
+		flag_tmp = 0;
+	}
 	for (size_t i = 0; i < 5; i++) {
 		if (CheckChannel(i, CHNL_STATE_TRANSMIT)) {
-			strncpy(file, chn_data.buf[i], sizeof(chn_data.buf[i]));
+			/* + 1 to ommit '/' sign. */
+			strncpy(file, chn_data.buf[i] + 1, HELP_BUF_SIZE - 1);
 			*id = i;
 			return 0;
 		}
@@ -490,29 +499,55 @@ static int8_t esp8266_state1(char *buf, const size_t buf_len,
 			     uint8_t *state)
 {
 	int8_t ret;
-	uint16_t id, len;
+	uint16_t id, len, lentmp;
 	char file[HELP_BUF_SIZE];
-	
+
+
 	ret = CompareLastBytes(buf, buf_len, "HTTP");	
 	if (ret) 
 		return -1;
 
-	*state = 0;
-	MoveToSign(buf, buf_len, '+');
-	memset(file, 0, HELP_BUF_SIZE);
+	memset(buf + buf_len - strlen(" HTTP"), 0, strlen(" HTTP"));
 
-	ret = sscanf(buf, "+IPD,%hu,%hu:GET /%s HTTP", &id, &len, file);
+	*state = 0;
+
+	MoveToSign(buf, buf_len, '+');
+	MoveToSign(buf, buf_len, 'I');
+	MoveToSign(buf, buf_len, 'P');
+	MoveToSign(buf, buf_len, 'D');
+	MoveToSign(buf, buf_len, ',');
+	memset(file, 0, HELP_BUF_SIZE);
+	
+	*buf = '\0';
+	*(buf + 2) = '\0';
+
+	id = atoi(buf + 1);
+	len = atoi(buf + 3);
+
+	MoveToSign(buf, buf_len, ':');
+	MoveToSign(buf, buf_len, 'G');
+	MoveToSign(buf, buf_len, 'E');
+	MoveToSign(buf, buf_len, 'T');
+	strncpy(file, buf + 2, strlen(buf + 2));
 	
 	if (id < 5) 
 		SetChannelTransmit(file, id);
 
-	if (ret == 3)	
-		len -= strlen("+IPD,x,xxx: GET / HTTP") + strlen(file) + 20; 
-	else
-		len = 250; 
+	lentmp = strlen("+IPD,x,xxx: GET / HTTP") + strlen(file) + 20; 
+
+	if (len >= lentmp)
+		len -= lentmp;
 
 	buffer_SetIgnore(&UART2_receive_buffer, len); 
+
+
+	memset(buf_tmp, 0, 100);
+	sprintf(buf_tmp, "id = %hu, len = %hu, strlen(buf + 2) = %u, file = %s, test = %u"
+		, id, len, strlen(buf + 2), file, strlen("test\0test"));
+
 	memset(buf, 0, buf_len);
+	flag_tmp = 1;
+
 	return 0;
 }
 
