@@ -145,7 +145,7 @@ int8_t CheckFormat(char *buf)
 	if (ptr) 
 		return 1;
 	
-	ptr = strstr(buf, "w.html");
+	ptr = strstr(buf, "select.html");
 	if (ptr) 
 		return 2;
 
@@ -393,7 +393,7 @@ int8_t PageRequest()
 			strcpy(buf, "zarzadzaj.html");
 		} else if (ret == 2) {
 			AddNewRFIDCard(buf);
-			strcpy(buf, "zarzadzaj.html");
+			strcpy(buf, "select.html");
 		} else {
 			strcpy(buf, "index.html");
 		}

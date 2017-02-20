@@ -85,9 +85,6 @@ uint8_t RFID_CardNumber(char* const buf)
 		strcpy(buf, &data[2]);
 	}
 
-	TM_ILI9341_DrawFilledRectangle(10, 80, 239, 120, ILI9341_COLOR_BLACK); 
-	TM_ILI9341_Puts(10, 80, data, &TM_Font_7x10, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
-
 	return !ret;
 }
 
