@@ -5,10 +5,10 @@ function createDropDownList(text)
 	var cnt = 0;
 	
 	temp = text.split(";");
-
+		
 	while(temp[cnt]) {
 		element += "<option value=\"";
-		element +=  temp[cnt];
+		element +=  cnt/2;
 		element += "\">";
 		element += temp[cnt];
 		element += "</option>";
@@ -29,7 +29,7 @@ function readTextFile(file)
             if(rawFile.status === 200 || rawFile.status == 0)
             {
                 var allText = rawFile.responseText;
-		document.getElementById("IDdrop").innerHTML = createDropDownList(allText);
+		document.getElementById("L0").innerHTML = createDropDownList(allText);
             }
         }
     }

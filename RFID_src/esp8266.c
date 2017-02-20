@@ -533,7 +533,7 @@ static int8_t esp8266_state1(char *buf, const size_t buf_len,
 	if (id < 5) 
 		SetChannelTransmit(file, id);
 
-	lentmp = strlen("+IPD,x,xxx: GET / HTTP") + strlen(file) + 20; 
+	lentmp = strlen("+IPD,x,xxx: GET / HTTP") + strlen(file) + 35; 
 
 	if (len >= lentmp)
 		len -= lentmp;
@@ -541,12 +541,12 @@ static int8_t esp8266_state1(char *buf, const size_t buf_len,
 	buffer_SetIgnore(&UART2_receive_buffer, len); 
 
 
-	memset(buf_tmp, 0, 100);
-	sprintf(buf_tmp, "id = %hu, len = %hu, strlen(buf + 2) = %u, file = %s, test = %u"
-		, id, len, strlen(buf + 2), file, strlen("test\0test"));
-
+//	memset(buf_tmp, 0, 100);
+//	sprintf(buf_tmp, "id = %hu, len = %hu, strlen(buf + 2) = %u, file = %s, test = %u"
+//		, id, len, strlen(buf + 2), file, strlen("test\0test"));
+//	flag_tmp = 1;
 	memset(buf, 0, buf_len);
-	flag_tmp = 1;
+
 
 	return 0;
 }

@@ -19,7 +19,7 @@ function createTable(text)
 	table += "<td>Numer ID</td>";
 	table += "<td>Prawo dostępu</td>";
 	table += "</tr>";
-	
+
 	temp = text.split(";");
 
 	while(temp[cnt]) {

@@ -13,22 +13,31 @@
 		</p>
 
 		<h1>Zarządzanie kartami RFID.</h1>
-		
+			Tabela kart zarejestrowanych w systemie:
 			<p id="table"></p>
 			<script src="ID_list.js"></script>
 
-			<form action="zarzadzaj.html" method="get">
-			
-
-			<select name="ID_List" id="IDdrop"></select>
+			<form action="z.html" method="get">
+		
+			<p>Zmiana ustawień:</p>
+			<select name="ID_List" id="L0"></select>
 			<script src="ID_dropdownlist.js"></script>
 			
-			<select name="MOD_List">
+			<select name="MOD_List" id="L1">
 				<option value="0">Zablokuj</option>
 				<option value="1">Dopuść</option>
 				<option value="2">Zresetuj</option>
 			</select>
 			<input type="submit" value="Aktualizuj"></input>
+			</form>
+
+			<br>
+			<br>
+			<form action="w.html?" method="get">
+				<p>Wprowadzanie nowych kart.</p>
+				By wprowadzić kartę naciśnij poniższy przycisk i przyłóż kartę.
+				<br>
+				<input type="submit" value="Wprowadź kartę."></input>
 			</form>
 			
 	</body>

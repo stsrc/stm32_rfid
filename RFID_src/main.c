@@ -146,7 +146,6 @@ int8_t CheckFormat(char *buf)
 		return 1;
 	
 	ptr = strstr(buf, "w.html");
-
 	if (ptr) 
 		return 2;
 
